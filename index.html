@@ -845,8 +845,9 @@ function drawMap(){
   const P=pts();
   NAV.line=Lf.polyline(P.map(p=>[p.lat,p.lon]),{color:"#d6336c",weight:4,opacity:.9}).addTo(NAV.map);
   NS.route.forEach((p,i)=>{
-    const m=Lf.marker([p.lat,p.lon],{draggable:true}).addTo(NAV.map).bindTooltip(p.name,{permanent:true,direction:"right"});
-    m.on("dragend",e=>{const ll=e.target.getLatLng();p.lat=+ll.lat.toFixed(5);p.lon=+ll.lng.toFixed(5);navSave(NS);navCalc()});
+    const atHome=Math.abs(p.lat-LAT)<1e-4&&Math.abs(p.lon-LON)<1e-4;
+    const m=Lf.marker([p.lat,p.lon],{draggable:true}).addTo(NAV.map).bindTooltip(p.name,{permanent:!atHome,direction:"right"});
+    m.on("dragend",e=>{const ll=e.target.getLatLng();p.lat=+ll.lat.toFixed(5);p.lon=+ll.lng.toFixed(5);delete p.ap;p.name=`WP${i+1}`;navSave(NS);navCalc()});
     m.on("click",()=>{NS.route.splice(i,1);NS.route.forEach((q,n)=>{if(/^WP\d+$/.test(q.name))q.name=`WP${n+1}`});navSave(NS);navCalc()});
     NAV.mks.push(m);
   });
