@@ -51,7 +51,8 @@ Le impostazioni (campo base, limiti, velocità, consumo, chiave openAIP) restano
 | Previsioni meteo | [Open-Meteo](https://open-meteo.com) | CC BY 4.0 |
 | Aeroporti, piste, frequenze | [OurAirports](https://ourairports.com) | pubblico dominio |
 | METAR e TAF | [aviationweather.gov](https://aviationweather.gov) | pubblico dominio |
-| Spazi aerei (facoltativo) | [openAIP](https://www.openaip.net) | con la chiave dell'utente |
+| Spazi aerei e seconda scheda dei campi | [openAIP](https://www.openaip.net), CC BY-NC 4.0 | `data/openaip-it.js`, aggiornato ogni settimana da GitHub Actions (`tools/aggiorna_openaip.py`) |
+| Livello spazi aerei sulla mappa (facoltativo) | openAIP | con la chiave dell'utente |
 | Quote del terreno | [Open-Meteo Elevation](https://open-meteo.com) (Copernicus DEM) | CC BY 4.0 |
 | Mappa meteo animata | widget ufficiale di [Windy.com](https://www.windy.com) | termini Windy |
 | Mappe | Esri, OpenTopoMap | vedi i rispettivi termini |
