@@ -23,7 +23,7 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 
 **Il semaforo personale: meteo × velivolo × titolo × esperienza**
 - **Velivolo**: profili per **Tecnam P92** e **Cessna 172**, ognuno con i propri limiti personali (vento, raffiche, traverso, visibilità, base nubi, pioggia) e il traverso massimo dimostrato dal manuale.
-- **Titolo di volo**: **VDS basico** o **VDS avanzato**, con le regole del DPR 133/2010 art. 9: volo solo dall'alba al tramonto; per il basico quota massima 500 ft dal suolo (1.000 ft sabato, domenica e festività nazionali) e distanza di almeno 5 km dagli aeroporti.
+- **Titolo di volo** legato al velivolo: con un apparecchio VDS **VDS basico** o **VDS avanzato**, con un velivolo certificato **LAPL(A)** o **PPL(A)** (VFR diurno). Per il VDS valgono con le regole del DPR 133/2010 art. 9: volo solo dall'alba al tramonto; per il basico quota massima 500 ft dal suolo (1.000 ft sabato, domenica e festività nazionali) e distanza di almeno 5 km dagli aeroporti.
 - **Esperienza recente**: se non voli da più giorni di quanti decidi tu, i limiti di vento si riducono della percentuale che scegli, e il semaforo te lo dice.
 - Il semaforo **spiega sempre il perché**.
 
@@ -36,7 +36,7 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 - Per il VDS basico, **avviso se la rotta passa a meno di 5 km da un aeroporto**.
 - **Windy** integrato (widget ufficiale) centrato sulla rotta: vento, raffiche, nuvole, pioggia, temperatura, pressione.
 - Mappa topografica o satellite, livello **spazi aerei openAIP** (serve una chiave gratuita) ed esportazione della rotta in **GPX**.
-- **Avviso zone sulla rotta**: con la chiave openAIP l'app segnala ATZ, CTR, TMA e zone P/R/D attraversate, in base al titolo (VDS basico o avanzato). Dati non ufficiali.
+- **Avviso zone sulla rotta**: l'app segnala ATZ, CTR, TMA e zone P/R/D attraversate, in base al titolo. Dati openAIP, non ufficiali.
 - **Checklist "Verifica su AIP e NOTAM"**: per ogni rotta dice quali sezioni dell'eAIP ENAV controllare (ENR 5.1, ENR 5.6, ENR 2, AD 2) e quali campi chiamare.
 
 ## Come si usa

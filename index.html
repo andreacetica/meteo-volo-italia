@@ -59,6 +59,8 @@
   .links{display:flex;flex-wrap:wrap;gap:8px}
   .links a{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 11px;text-decoration:none}
   .acrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .selgrid{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;margin-bottom:4px}
+  .selgrid .days button{min-width:9em;justify-content:center;text-align:center}
   .next{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   @media(max-width:700px){.next{grid-template-columns:repeat(2,1fr)}}
   .nx{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;border-top-width:4px}
@@ -104,8 +106,8 @@
     <div class="days" id="days"></div>
   </header>
 
-  <div class="acrow"><span class="sub">Velivolo:</span> <span class="days" id="aircraft"></span>
-    <span class="sub" style="margin-left:10px">Titolo:</span> <span class="days" id="license"></span></div>
+  <div class="selgrid"><span class="sub">Velivolo</span><span class="days" id="aircraft"></span>
+    <span class="sub">Titolo</span><span class="days" id="license"></span></div>
   <div id="pilotbar" class="sub" style="margin:6px 0 2px"></div>
 
   <div id="verdict" class="verdict warn"><span class="dot"></span><div>Caricamento dati…</div></div>
@@ -236,8 +238,13 @@ const LIM={wind:15,gust:20,xw:10,xwpoh:"",vis:5,base:1500,pop:40};
 // Titoli di volo. Regole VDS dal DPR 9 luglio 2010 n. 133, art. 9 (testo: normattiva.it)
 const LIC={
   "VDS basico":{day:true,ceiling:true,airportKm:5,note:"DPR 133/2010 art. 9: volo a vista diurno fuori dalle nubi; fuori da spazi aerei controllati e ATZ e ad almeno 5 km dagli aeroporti (salvo autorizzazione ENAC); massimo 500 ft dal suolo, 1.000 ft sabato, domenica e festività nazionali, riferiti all'ostacolo più alto entro 5 km; divieto di sorvolo di centri abitati e assembramenti."},
+  "LAPL(A)":{day:true,ceiling:false,airportKm:0,vfr:true,note:"Licenza LAPL(A), Reg. (UE) 1178/2011 Part-FCL: velivoli fino a 2.000 kg con al massimo 4 persone a bordo; volo VFR diurno. Negli spazi controllati e nelle ATZ servono contatto radio e autorizzazione secondo le regole di ciascuno spazio. Per portare passeggeri: 3 decolli e 3 atterraggi negli ultimi 90 giorni (FCL.060)."},
+  "PPL(A)":{day:true,ceiling:false,airportKm:0,vfr:true,note:"Licenza PPL(A), Reg. (UE) 1178/2011 Part-FCL. Qui si considera il volo VFR diurno: il volo notturno richiede l'abilitazione al volo notturno e non è gestito dall'app. Negli spazi controllati e nelle ATZ servono contatto radio e autorizzazione secondo le regole di ciascuno spazio. Per portare passeggeri: 3 decolli e 3 atterraggi negli ultimi 90 giorni (FCL.060)."},
   "VDS avanzato":{day:true,ceiling:false,airportKm:0,note:"DPR 133/2010 art. 9: volo a vista diurno fuori dalle nubi; con apparecchio e pilota avanzati si possono usare i servizi di navigazione aerea e lo spazio aereo aperto al volo a vista, secondo le regole di ciascuno spazio aereo."}
 };
+// Titoli ammessi per ogni velivolo: il P92 del club è un apparecchio VDS, il C172 un velivolo certificato
+const AC_LIC={"Tecnam P92":["VDS basico","VDS avanzato"],"Cessna 172":["LAPL(A)","PPL(A)"]};
+function licFix(){const ok=AC_LIC[S.ac]||Object.keys(LIC); if(!ok.includes(S.lic))S.lic=(S.licAc&&ok.includes(S.licAc[S.ac]))?S.licAc[S.ac]:ok[0]}
 // Festività nazionali (L. 260/1949 e successive; 4 ottobre dal 2026, L. 151/2025)
 function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
 function isFestivo(dstr){
@@ -260,7 +267,7 @@ setHome(S.home);
 
 function load(){
   let o={};try{o=JSON.parse(localStorage.getItem("meteoVoloSet")||"{}")}catch(e){}
-  const st={lic:o.lic&&["VDS basico","VDS avanzato"].includes(o.lic)?o.lic:"VDS basico",last:o.last||"",rdays:o.rdays||"",rred:o.rred||"",bip:!!o.bip,home:o.home||"LIQQ",rwh:o.rwh||"",rwcustom:o.rwcustom||"",ac:o.ac&&AIRCRAFT.includes(o.ac)?o.ac:"Tecnam P92",prof:{}};
+  const st={lic:o.lic&&["VDS basico","VDS avanzato","LAPL(A)","PPL(A)"].includes(o.lic)?o.lic:"VDS basico",licAc:o.licAc||{},last:o.last||"",rdays:o.rdays||"",rred:o.rred||"",bip:!!o.bip,home:o.home||"LIQQ",rwh:o.rwh||"",rwcustom:o.rwcustom||"",ac:o.ac&&AIRCRAFT.includes(o.ac)?o.ac:"Tecnam P92",prof:{}};
   AIRCRAFT.forEach(a=>{st.prof[a]=Object.assign({},ACDEF[a],(o.prof&&o.prof[a])||{})});
   return st;
 }
@@ -350,17 +357,19 @@ function render(){
   }).join("");
   $("days").querySelectorAll("button").forEach(b=>b.onclick=()=>{dayIdx=+b.dataset.d;selHour=null;selManual=dayIdx!==0;render()});
 
-  $("license").innerHTML=Object.keys(LIC).map(l=>`<button class="${l===S.lic?"on":""}" data-l="${l}">${l}</button>`).join("");
-  $("license").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.lic=b.dataset.l;save();render()});
+  licFix();
+  $("license").innerHTML=(AC_LIC[S.ac]||Object.keys(LIC)).map(l=>`<button class="${l===S.lic?"on":""}" data-l="${l}">${l}</button>`).join("");
+  $("license").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.lic=b.dataset.l;S.licAc[S.ac]=S.lic;save();render()});
   {const rc=recency(), dstr=DATA.daily.time[dayIdx], lic=LIC[S.lic];
-   const bits=[`<b>${S.lic}</b>${S.bip?" con biposto":""}`];
+   const bits=[`<b>${S.lic}</b>${S.bip&&!lic.vfr?" con biposto":""}`];
+   if(lic.vfr)bits.push("spazi controllati e ATZ: con contatto radio e autorizzazione");
    if(lic.ceiling)bits.push(`quota massima ${vdsCeiling(dstr)} ft dal suolo ${isFestivo(dstr)?"(sabato, domenica o festivo)":"(giorno feriale)"}, riferita all'ostacolo più alto entro 5 km`);
    if(lic.airportKm)bits.push(`fuori da CTR e ATZ, almeno ${lic.airportKm} km dagli aeroporti`);
    bits.push("solo dall'alba al tramonto");
    if(rc.days!=null)bits.push(rc.active?`<span style="color:var(--warn)">⚠️ ultimo volo ${rc.days} giorni fa: limiti di vento ridotti del ${rc.p}%</span>`:`ultimo volo ${rc.days} giorni fa`);
    $("pilotbar").innerHTML=`🧑‍✈️ ${bits.join(" · ")} <span title="${lic.note}" style="cursor:help">ⓘ</span>`;}
   $("aircraft").innerHTML=AIRCRAFT.map(a=>`<button class="${a===S.ac?"on":""}" data-a="${a}">${a}</button>`).join("");
-  $("aircraft").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.ac=b.dataset.a;LM=S.prof[S.ac];save();initSettings();navInit();render()});
+  $("aircraft").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.ac=b.dataset.a;S.lic="";licFix();LM=S.prof[S.ac];save();initSettings();navInit();render()});
 
   const hrs=dayHours(dayIdx);
   if(selHour==null||!hrs.includes(selHour)||(dayIdx===0&&!selManual)){
