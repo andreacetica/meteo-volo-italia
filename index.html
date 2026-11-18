@@ -576,6 +576,33 @@ function apPopup(a){
   const rws=a.r.length?a.r.map(r=>`${r[0]}/${r[1]} · ${r[2]?ftm(r[2])+" m":"?"} · ${SURF(r[4])}`).join("<br>"):"piste non in archivio";
   return `<b>${a.c}</b> ${a.n}<br><span style="color:#666">${a.m||""} · ${a.e!=null?a.e+" ft":""}</span><br>${rws}<br><a href="#" data-sheet="${a.c}">📋 Scheda completa</a> · <a href="#" data-add="${a.c}">➕ Aggiungi alla rotta</a>`;
 }
+// ---- Scheda openAIP del campo (dati della comunità, con la chiave dell'utente) ----
+const OAPT={};
+const mv=d=>d&&d.value!=null?(d.unit===0?+d.value:d.unit===1?+d.value/3.281:null):null; // 0=metri, 1=piedi
+async function oaipAirport(a){
+  const key=(NS.oaip||"").trim(); if(!key)return null;
+  if(OAPT[a.c]!==undefined)return OAPT[a.c];
+  const d=.03, b=[a.lo-d,a.la-d,a.lo+d,a.la+d].map(x=>x.toFixed(4)).join(",");
+  const r=await fetch(`https://api.core.openaip.net/api/airports?bbox=${b}&limit=20&apiKey=${encodeURIComponent(key)}`);
+  if(!r.ok)throw new Error(r.status===401||r.status===403?"chiave non valida":"errore "+r.status);
+  const items=((await r.json()).items||[]).filter(x=>x.geometry&&x.geometry.coordinates);
+  const dist=x=>Math.hypot((x.geometry.coordinates[0]-a.lo)*Math.cos(a.la*Math.PI/180),x.geometry.coordinates[1]-a.la);
+  items.sort((p,q)=>dist(p)-dist(q));
+  return OAPT[a.c]=items.length&&dist(items[0])<.02?items[0]:null;
+}
+function oaipHtml(o){
+  if(!o)return `<div class="sub">openAIP non ha una scheda per questo campo.</div>`;
+  const el=mv(o.elevation);
+  const rws=(o.runways||[]).map(r=>{const L=mv(r.dimension&&r.dimension.length),W=mv(r.dimension&&r.dimension.width);
+    return `<tr><td><b>${esc(r.designator)}</b>${r.mainRunway?" ★":""}</td><td>${r.trueHeading!=null?n3(r.trueHeading)+"° V":"–"}</td><td>${L?Math.round(L)+" m":"–"}</td><td>${W?Math.round(W)+" m":"–"}</td></tr>`}).join("");
+  const fr=(o.frequencies||[]).map(f=>`<span class="mono">${esc(f.value)}</span>${f.name?" "+esc(f.name):""}`).join(" · ");
+  const flags=[o.ppr===true?"⚠️ PPR richiesto":o.ppr===false?"PPR non indicato":"",o.private===true?"🔒 campo privato":""].filter(Boolean).join(" · ");
+  return `<div class="sub"><b>${esc(o.name)}</b>${o.icaoCode?" · "+esc(o.icaoCode):""}${el!=null?` · quota ${Math.round(el*3.281)} ft (${Math.round(el)} m)`:""}${flags?" · "+flags:""}</div>
+    ${rws?`<div class="tablewrap" style="margin-top:6px"><table><tr><th>Pista</th><th>Prua</th><th>Lunghezza</th><th>Larghezza</th></tr>${rws}</table></div>`:""}
+    ${fr?`<div class="sub" style="margin-top:6px">Frequenze: ${fr}</div>`:""}
+    <div class="sub" style="margin-top:6px">Dati della comunità openAIP (CC BY-NC), non ufficiali: se non coincidono con la scheda sopra, chiedi al gestore.</div>`;
+}
+
 // ---- Scheda completa del campo (si apre toccando un aeroporto) ----
 let NOTE={}; try{NOTE=JSON.parse(localStorage.getItem("meteoVoloNote")||"{}")}catch(e){}
 function noteSave(){try{localStorage.setItem("meteoVoloNote",JSON.stringify(NOTE))}catch(e){}}
@@ -591,11 +618,11 @@ async function apSheet(code){
     `<a href="https://www.google.com/search?q=${q}+telefono" target="_blank" rel="noopener">🔎 Cerca telefono e contatti</a>`,
     `<a href="https://www.google.com/maps/search/?api=1&query=${a.la},${a.lo}" target="_blank" rel="noopener">📍 Apri in Google Maps</a>`,
     a.t!=="s"?`<a href="${EAIP}" target="_blank" rel="noopener">📘 eAIP · scheda AD 2 ${a.c}</a>`:`<a href="https://www.webaai.it" target="_blank" rel="noopener">📘 WebAAI (ENAC)</a>`,
-    `<a href="https://www.avioportolano.it" target="_blank" rel="noopener">📗 Avioportolano</a>`,
-    !/^IT-/.test(a.c)&&a.t!=="s"?`<a href="https://aviationweather.gov/data/metar/?id=${a.c}&hours=0&taf=1" target="_blank" rel="noopener">🌦️ METAR e TAF ${a.c}</a>`:""
   ].filter(Boolean).join("");
   ov.innerHTML=`<div class="sheet"><button class="x" aria-label="Chiudi">✕</button>
     <div id="sh_card"><div class="card sub">Carico il meteo del campo…</div></div>
+    ${/^LI[A-Z]{2}$/.test(a.c)&&a.t!=="s"?`<h3 class="sh">METAR e TAF ${a.c}</h3><div id="sh_metar" class="metar mono">Carico…</div>`:""}
+    <h3 class="sh">Seconda fonte: openAIP</h3><div id="sh_oaip"><div class="sub">${(NS.oaip||"").trim()?"Carico la scheda openAIP…":"Inserisci la chiave openAIP in ⚙️ Impostazioni per vedere anche i dati openAIP."}</div></div>
     <h3 class="sh">Contatti</h3>
     <div class="sub">${offic||"Nessun contatto verificato in archivio: usa “Cerca telefono e contatti” e salvalo qui sotto."}</div>
     <div class="settings" style="margin-top:8px">
@@ -615,6 +642,8 @@ async function apSheet(code){
     if(!Object.values(NOTE[a.c]).some(Boolean))delete NOTE[a.c]; noteSave();
     const t=$("sh_tel").value.trim(); $("sh_quick").innerHTML=t?`📞 <a href="${telHref(t)}">Chiama ${esc(t)}</a>`:"";
   });
+  if($("sh_metar"))fetch(`https://aviationweather.gov/api/data/metar?ids=${a.c}&format=raw&taf=true&hours=2`).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{if($("sh_metar"))$("sh_metar").textContent=t.trim()||`Nessun METAR recente per ${a.c}: potrebbe non emetterlo o essere chiuso a quest'ora.`}).catch(()=>{if($("sh_metar"))$("sh_metar").innerHTML=`Non riesco a scaricarli qui: <a href="https://aviationweather.gov/data/metar/?ids=${a.c}&hours=0&include_taf=yes" target="_blank" rel="noopener">apri METAR e TAF ${a.c}</a>`});
+  if((NS.oaip||"").trim())oaipAirport(a).then(x=>{if($("sh_oaip"))$("sh_oaip").innerHTML=oaipHtml(x)}).catch(e=>{if($("sh_oaip"))$("sh_oaip").innerHTML=`<div class="sub">⚠️ Non riesco a leggere openAIP (${esc(e.message)}).</div>`});
   try{
     const W=await wxAt(a.la,a.lo), k=DATA?DATA.hourly.time[selHour]:null; let i=k?W.hourly.time.indexOf(k):0; if(i<0)i=0;
     if(!$("sh_card"))return;
