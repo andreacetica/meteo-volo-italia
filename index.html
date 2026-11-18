@@ -151,7 +151,7 @@
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   @media(max-width:700px){.grid4{grid-template-columns:repeat(2,1fr)}}
   .grid4 .v{font-size:19px}
-  #profile svg{width:100%;height:auto;display:block;background:var(--panel2);border:1px solid var(--line);border-radius:12px}
+  #profile>svg{width:100%;height:auto;display:block;background:var(--panel2);border:1px solid var(--line);border-radius:12px}
   #apsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 10px}
   #apsheet .sheet{background:var(--bg);border:1px solid var(--line);border-radius:14px;max-width:760px;width:100%;padding:16px;position:relative}
   #apsheet .x{position:absolute;top:10px;right:10px} #apsheet h3.sh{font-size:15px;margin:16px 0 6px;text-transform:none;letter-spacing:0;color:var(--txt)}
@@ -176,7 +176,7 @@
     .step{margin-top:10px;break-inside:avoid} .lbl{margin:6px 0 3px}
     details.sec{border:0;margin:6px 0 0;break-inside:avoid} details.sec>summary{min-height:0;padding:6px 0;font-size:14px} details.sec>summary::after{display:none} details.sec>.in{padding:0}
     .vbox{break-inside:avoid;background:#fff!important} .ck{padding:4px 0}
-    #profile svg{background:#fff} #profile svg text{fill:#111}
+    #profile>svg{background:#fff} #profile>svg text{fill:#111}
     a{color:#111;text-decoration:none}
     table{min-width:0!important;font-size:11px}
   }
@@ -237,10 +237,10 @@
   </section>
 
   <details class="sec" id="d_log"><summary>🧭 Log di navigazione</summary><div class="in"><div id="navres"></div></div></details>
+  <details class="sec" id="d_wx"><summary>📊 Meteo al campo, ora per ora</summary><div class="in"><div id="cards"></div><p class="sub">Tocca un'ora per partire a quell'ora.</p><div class="tablewrap"><table id="hourly"></table></div></div></details>
   <details class="sec" id="d_prof"><summary>⛰️ Profilo verticale</summary><div class="in"><div id="profile"></div></div></details>
   <details class="sec" id="d_chk"><summary id="chksum">✅ Prima di partire: AIP e NOTAM</summary><div class="in"><div id="aipchk"></div></div></details>
   <details class="sec" id="d_rw"><summary>🛬 Pista e vento al campo</summary><div class="in"><p class="sub" id="rwhour" style="margin:0 0 8px"></p><div class="rw" id="runway"></div></div></details>
-  <details class="sec" id="d_wx"><summary>📊 Meteo al campo, ora per ora</summary><div class="in"><div id="cards"></div><p class="sub">Tocca un'ora per partire a quell'ora.</p><div class="tablewrap"><table id="hourly"></table></div></div></details>
   <details class="sec" id="d_windy"><summary>🌬️ Windy sulla zona</summary><div class="in">
     <div class="links" id="wy_btns" style="margin-bottom:8px"></div>
     <div style="border-radius:12px;overflow:hidden;border:1px solid var(--line)"><iframe id="windy" title="Windy" style="width:100%;height:420px;border:0" loading="lazy"></iframe></div>
@@ -1074,19 +1074,30 @@ function drawProfile(fl){
   const {samp,el,marks,tot}=pr, ceil=fl.ceil, ceilAGL=fl.ceilAGL, cruise=fl.lvl==="agl"?null:ALTFT[fl.lvl];
   const cloud=fl.legs.map(L=>L.ev.cloudAmsl), maxT=Math.max(...el), wk=el.indexOf(maxT);
   const top=Math.max(cruise||0,maxT,...(ceil||[0]),...cloud.filter(x=>x!=null))*1.15+300;
-  const W=900,H=260,pl=48,pr_=12,pt=14,pb=28, X=d=>pl+(W-pl-pr_)*d/tot, Y=a=>H-pb-(H-pt-pb)*a/top;
+  const W=640,H=470,pl=58,pr_=14,pt=18,pb=40, X=d=>pl+(W-pl-pr_)*d/tot, Y=a=>H-pb-(H-pt-pb)*a/top;
   const terr=`M${X(0)},${Y(0)} `+samp.map((p,k)=>`L${X(p[2]).toFixed(1)},${Y(el[k]).toFixed(1)}`).join(" ")+` L${X(tot)},${Y(0)} Z`;
-  let grid=""; for(let a=0;a<=top;a+=top>6000?2000:1000)grid+=`<line x1="${pl}" x2="${W-pr_}" y1="${Y(a)}" y2="${Y(a)}" stroke="#2a3440"/><text x="${pl-6}" y="${Y(a)+4}" fill="#8b98a5" font-size="11" text-anchor="end">${a}</text>`;
-  const cl=fl.legs.map((L,i)=>cloud[i]==null?"":`<line x1="${X(marks[i])}" x2="${X(marks[i+1])}" y1="${Y(cloud[i])}" y2="${Y(cloud[i])}" stroke="#8b98a5" stroke-width="3" stroke-dasharray="8 5"/>`).join("");
-  const P=RT.P, wps=P.map((p,i)=>`<line x1="${X(marks[i])}" x2="${X(marks[i])}" y1="${pt}" y2="${H-pb}" stroke="#58a6ff" stroke-opacity=".35"/><text x="${X(marks[i])+(i===P.length-1?-4:4)}" y="${H-pb+16}" fill="#e6edf3" font-size="11" text-anchor="${i===P.length-1?"end":"start"}">${esc(shortName(p).slice(0,10))}</text>`).join("");
+  const step=top>8000?2000:top>3500?1000:500;
+  let grid=""; for(let a=0;a<=top;a+=step)grid+=`<line x1="${pl}" x2="${W-pr_}" y1="${Y(a)}" y2="${Y(a)}" stroke="#2a3440" ${a?'stroke-dasharray="2 4"':""}/><text x="${pl-8}" y="${Y(a)+5}" fill="#8b98a5" font-size="15" text-anchor="end">${a.toLocaleString("it-IT")}</text>`;
+  grid+=`<text x="${pl-8}" y="${pt-4}" fill="#8b98a5" font-size="13" text-anchor="end">ft</text>`;
+  const cl=fl.legs.map((L,i)=>cloud[i]==null?"":`<line x1="${X(marks[i])}" x2="${X(marks[i+1])}" y1="${Y(cloud[i])}" y2="${Y(cloud[i])}" stroke="#c9d1d9" stroke-width="3" stroke-dasharray="10 7" stroke-linecap="round"/>`).join("");
+  const P=RT.P, wps=P.map((p,i)=>`<line x1="${X(marks[i])}" x2="${X(marks[i])}" y1="${pt}" y2="${H-pb}" stroke="#58a6ff" stroke-opacity=".3"/><circle cx="${X(marks[i])}" cy="${H-pb}" r="5" fill="#58a6ff"/><text x="${X(marks[i])+(i===P.length-1?-6:i===0?6:0)}" y="${H-pb+24}" fill="#e6edf3" font-size="15" font-weight="600" text-anchor="${i===P.length-1?"end":i===0?"start":"middle"}">${esc(shortName(p).slice(0,10))}</text>`).join("");
   const ceilPath=ceil?samp.map((p,k)=>`${X(p[2]).toFixed(1)},${Y(ceil[k]).toFixed(1)}`).join(" L"):"";
-  const band=ceil?`<path d="M${ceilPath} L${samp.map((p,k)=>[p,k]).reverse().map(([p,k])=>`${X(p[2]).toFixed(1)},${Y(el[k]).toFixed(1)}`).join(" L")} Z" fill="#2ea043" fill-opacity=".2"/><path d="M${ceilPath}" fill="none" stroke="#d29922" stroke-width="2.5"/>`:"";
-  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profilo verticale della rotta">${grid}<path d="${terr}" fill="#6b4f2a" fill-opacity=".75" stroke="#a0784a"/>${band}${cl}
-    ${cruise?`<line x1="${pl}" x2="${W-pr_}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="3"/><text x="${W-pr_-4}" y="${Y(cruise)-6}" fill="#d6336c" font-size="12" text-anchor="end">crociera ~${cruise} ft</text>`:""}${wps}</svg>
-  <div class="legend" style="margin-top:6px"><span><i style="background:#6b4f2a"></i>terreno</span>${ceil?`<span><i style="background:rgba(46,160,67,.5)"></i>fascia in cui puoi volare</span><span><i style="background:#d29922"></i>quota massima ${esc(S.lic)}</span>`:`<span><i style="background:#d6336c"></i>quota di crociera</span>`}<span><i style="background:#8b98a5"></i>base nubi stimata</span></div>
+  const band=ceil?`<path d="M${ceilPath} L${samp.map((p,k)=>[p,k]).reverse().map(([p,k])=>`${X(p[2]).toFixed(1)},${Y(el[k]).toFixed(1)}`).join(" L")} Z" fill="#2ea043" fill-opacity=".22"/><path d="M${ceilPath}" fill="none" stroke="#e3b341" stroke-width="3" stroke-linejoin="round"/>`:"";
+  const sw=k=>({terr:`<svg width="26" height="14" aria-hidden="true"><rect x="1" y="2" width="24" height="10" rx="2" fill="#7a5a33" stroke="#c49a63"/></svg>`,
+    band:`<svg width="26" height="14" aria-hidden="true"><rect x="1" y="2" width="24" height="10" rx="2" fill="#2ea043" fill-opacity=".45"/></svg>`,
+    ceil:`<svg width="26" height="14" aria-hidden="true"><line x1="1" y1="7" x2="25" y2="7" stroke="#e3b341" stroke-width="3"/></svg>`,
+    cru:`<svg width="26" height="14" aria-hidden="true"><line x1="1" y1="7" x2="25" y2="7" stroke="#d6336c" stroke-width="3"/></svg>`,
+    cloud:`<svg width="26" height="14" aria-hidden="true"><line x1="2" y1="7" x2="24" y2="7" stroke="#c9d1d9" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round"/></svg>`})[k];
+  const lg=(k,t)=>`<span style="display:inline-flex;gap:6px;align-items:center">${sw(k)}${t}</span>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profilo verticale della rotta">
+    <defs><linearGradient id="gTer" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9c7444"/><stop offset="1" stop-color="#3d2b19"/></linearGradient></defs>
+    ${grid}<path d="${terr}" fill="url(#gTer)" stroke="#c49a63" stroke-width="1.5"/>${band}${cl}
+    ${cruise?`<line x1="${pl}" x2="${W-pr_}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="3"/><text x="${W-pr_-4}" y="${Y(cruise)-8}" fill="#ff6b9a" font-size="15" font-weight="600" text-anchor="end">crociera ~${cruise} ft</text>`:""}
+    ${ceil?`<text x="${pl+8}" y="${Y(ceil[0])-8}" fill="#e3b341" font-size="15" font-weight="600">max ${ceilAGL} ft dal suolo</text>`:""}${wps}</svg>
+  <div class="legend" style="margin-top:8px;gap:14px;align-items:center">${lg("terr","terreno")}${ceil?lg("band","fascia in cui puoi volare")+lg("ceil","quota massima "+esc(S.lic)):lg("cru","quota di crociera")}${lg("cloud","base nubi stimata")}</div>
   <div class="grid">
     <div class="card"><div class="k">Terreno più alto</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(samp[wk][2],1)} NM dalla partenza${ceil?`: lì al massimo <b>${rr(ceil[wk])} ft</b> sull'altimetro (QNH)`:""}</div></div>
-    ${ceil?`<div class="card"><div class="k">Quota massima lungo la rotta</div><div class="v">${rr(Math.min(...ceil))}–${rr(Math.max(...ceil))} ft</div><div class="s">${ceilAGL} ft sopra il terreno più alto entro ~5 km: sale e scende con le colline. Vola nella fascia verde.</div></div>`
+    ${ceil?`<div class="card"><div class="k">Quota massima lungo la rotta</div><div class="v">${rr(Math.min(...ceil))===rr(Math.max(...ceil))?rr(Math.max(...ceil)):rr(Math.min(...ceil))+"–"+rr(Math.max(...ceil))} ft</div><div class="s">${ceilAGL} ft sopra il terreno più alto entro ~5 km: sale e scende con le colline. Vola nella fascia verde.</div></div>`
     :`<div class="card"><div class="k">Sopra il terreno</div><div class="v" style="${cruise-maxT<1000?"color:var(--nogo)":""}">${r(cruise-maxT)} ft</div><div class="s">nel punto più alto, volando a ~${cruise} ft. In rosso sotto i 1.000 ft.</div></div>`}
     <div class="card"><div class="k">Nubi basse</div><div class="v">${cloud.some(x=>x!=null)?"~"+rr(Math.min(...cloud.filter(x=>x!=null)))+" ft":"nessuna"}</div><div class="s">${cloud.some(x=>x!=null)?"base stimata più bassa, sul livello del mare":"meno del 30% di nubi basse lungo la rotta"}</div></div>
   </div>
