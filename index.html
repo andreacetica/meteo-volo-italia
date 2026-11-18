@@ -35,6 +35,7 @@
   a{color:var(--accent)}
   .sub{color:var(--mute);font-size:13px}
   .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  @media(max-width:700px){input,select,textarea{font-size:16px!important}}
   button,select,input,textarea{font:inherit;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
   button{cursor:pointer}
   button.on{background:var(--accent2);border-color:var(--accent2);color:#0d1117;font-weight:700}
@@ -538,6 +539,7 @@ async function loadWeather(){
     const t=STALE||(MEM[url]&&MEM[url].t)||Date.now();
     $("updated").innerHTML=STALE?`<span style="color:var(--warn)">servizio meteo saturo, dati delle ${clk(new Date(t))}</span>`:`meteo delle ${clk(new Date(t))}`;
     if(STALE)setTimeout(loadWeather,90e3);
+    if(S.mode==="route"&&RT&&RT.ok&&Date.now()-RT.t>30*60e3)routeLoad();
     if(PEND){const d=DATA.daily.time.indexOf(PEND.d);if(d>=0&&/^\d\d:\d\d$/.test(PEND.t||"")){dayIdx=d;depT=new Date(`${PEND.d}T${PEND.t}`);selManual=true}PEND=null}
     update();
   }catch(e){
@@ -549,12 +551,12 @@ async function loadWeather(){
 }
 async function wxAt(lat,lon){
   const key=`${lat.toFixed(2)},${lon.toFixed(2)}`;
-  if(NAV.wx[key])return NAV.wx[key];
+  const c=NAV.wx[key]; if(c&&Date.now()-c.t<30*60e3)return c.p;
   const v=["wind_speed_10m","wind_direction_10m","wind_gusts_10m","wind_speed_120m","wind_direction_120m","cloud_cover_low","visibility","weather_code","temperature_2m","dew_point_2m","precipitation_probability","cape","is_day"];
   ["975","950","925","900","850"].forEach(l=>v.push(`wind_speed_${l}hPa`,`wind_direction_${l}hPa`));
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&hourly=${v.join(",")}&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`;
-  NAV.wx[key]=cjson(u,30);
-  try{return await NAV.wx[key]}catch(e){delete NAV.wx[key];throw e}
+  NAV.wx[key]={t:Date.now(),p:cjson(u,30)};
+  try{return await NAV.wx[key].p}catch(e){delete NAV.wx[key];throw e}
 }
 async function elevations(p){
   const out=[];
@@ -757,7 +759,7 @@ async function routeLoad(){
       hits=zoneHitsRoute(aspItems(await airspaces(b)),legs);
     }catch(e){zerr=e.message}
     if(seq!==calcSeq)return;
-    RT={ok:true,P,legs,Wmid,Wdest,Wap:Object.fromEntries(codes.map((c,i)=>[c,Wap[i]])),prof,hits,zerr,near:airportsNear(legs,5),tot:cum};
+    RT={ok:true,t:Date.now(),P,legs,Wmid,Wdest,Wap:Object.fromEntries(codes.map((c,i)=>[c,Wap[i]])),prof,hits,zerr,near:airportsNear(legs,5),tot:cum};
     NAV.fit=true; update();
   }catch(e){if(seq!==calcSeq)return;RT={err:e.message};update()}
 }
@@ -924,6 +926,9 @@ function renderRouteList(){
 function renumber(){let k=0;NS.route.forEach(q=>{if(/^WP\d+$/.test(q.name))q.name=`WP${++k}`})}
 function addRoutePoint(p){
   const R=NS.route, hasDest=R.length&&R[R.length-1].dest;
+  const same=(a,b)=>Math.abs(a.lat-b.lat)<2e-4&&Math.abs(a.lon-b.lon)<2e-4;
+  if(!R.length&&same(p,HOME)){toast(`${HOMEAP.c} è il tuo campo di partenza: per un giro locale lascia vuota la destinazione`);return}
+  if(R.some(q=>same(p,q))){toast(`${p.name} è già nella rotta`);return}
   if(hasDest)R.splice(R.length-1,0,p); else{p.dest=true;R.push(p)}
   renumber(); navSave(NS); NAV.fit=true; routeLoad();
 }
@@ -1282,13 +1287,16 @@ function drawMap(){
       addRoutePoint({lat:+ev.latlng.lat.toFixed(5),lon:+ev.latlng.lng.toFixed(5),name:wpName()});
     });
   }
-  NAV.mks.forEach(m=>NAV.map.removeLayer(m)); NAV.mks=[];
-  if(NAV.line){NAV.map.removeLayer(NAV.line);NAV.line=null}
+  const key=S.mode+JSON.stringify(pts());
+  const redraw=key!==NAV.key; NAV.key=key;
+  if(redraw){NAV.mks.forEach(m=>NAV.map.removeLayer(m)); NAV.mks=[];
+  if(NAV.line){NAV.map.removeLayer(NAV.line);NAV.line=null}}
   NAV.aspl.clearLayers(); NAV.zl={};
   const zcol=lv=>lv==="nogo"?"#f85149":lv==="warn"?"#d29922":"#58a6ff";
   const addZone=(a,lv,w)=>{if(NAV.zl[zid(a)])return;NAV.zl[zid(a)]=Lf.geoJSON(a.geometry,{style:{color:zcol(lv),weight:w||2,fillOpacity:.1,dashArray:lv==="info"?"4 4":null},interactive:false}).addTo(NAV.aspl)};
   if(S.mode==="route"){
     const P=pts();
+    if(redraw){
     if(P.length>1)NAV.line=Lf.polyline(P.map(p=>[p.lat,p.lon]),{color:"#d6336c",weight:4,opacity:.9}).addTo(NAV.map);
     NS.route.forEach((p,i)=>{
       const m=Lf.marker([p.lat,p.lon],{draggable:true,title:p.name}).addTo(NAV.map)
@@ -1296,11 +1304,11 @@ function drawMap(){
         .bindPopup(`<b>${esc(p.name)}</b><br><a href="#" data-del="${i}">Togli questo punto</a>${p.ap?` · <a href="#" data-sheet="${p.ap}">📋 Scheda</a>`:""}`);
       m.on("dragend",e=>{const ll=e.target.getLatLng();p.lat=+ll.lat.toFixed(5);p.lon=+ll.lng.toFixed(5);if(p.ap){delete p.ap;p.name="WP0"}renumber();navSave(NS);routeLoad()});
       NAV.mks.push(m);
-    });
+    });}
     if(FL&&FL.rows)FL.rows.filter(x=>x.zoneA).forEach(x=>addZone(x.zoneA,x.lv));
     if(NAV.fit&&NAV.line){NAV.map.fitBounds(NAV.line.getBounds(),{padding:[40,40]});NAV.fit=false}
   }else{
-    NAV.mks.push(Lf.circle([LAT,LON],{radius:LOCAL_KM*1000,color:"#58a6ff",weight:1.5,dashArray:"6 6",fill:false,interactive:false}).addTo(NAV.map));
+    if(redraw)NAV.mks.push(Lf.circle([LAT,LON],{radius:LOCAL_KM*1000,color:"#58a6ff",weight:1.5,dashArray:"6 6",fill:false,interactive:false}).addTo(NAV.map));
     if(FL&&FL.rows){FL.rows.filter(x=>x.zoneA).forEach(x=>addZone(x.zoneA,x.lv,3));
       if(LOC&&LOC.near)LOC.near.filter(z=>z.d>0&&(FL.rows.find(x=>x.zones)||{zones:[]}).zones.includes(zid(z.a))).forEach(z=>addZone(z.a,"info",1.5))}
     if(NAV.fit){NAV.map.setView([LAT,LON],11);NAV.fit=false}
@@ -1324,7 +1332,7 @@ function windyUpdate(){
 // ---------- METAR e TAF vicini ----------
 async function loadMetar(){
   const dist=a=>(a.la-LAT)**2+((a.lo-LON)*Math.cos(LAT*Math.PI/180))**2;
-  const near=AIRF.filter(a=>(a.t==="l"||a.t==="m")&&/^LI[A-Z]{2}$/.test(a.c)&&a.c!==HOMEAP.c).sort((x,y)=>dist(x)-dist(y)).slice(0,3);
+  const near=AIRF.filter(a=>(a.t==="l"||a.t==="m")&&/^LI[A-Z]{2}$/.test(a.c)).sort((x,y)=>dist(x)-dist(y)).slice(0,3);
   const ids=near.map(a=>a.c).join(",");
   $("l_awc").href=`https://aviationweather.gov/data/metar/?ids=${ids}&hours=0&include_taf=yes`;
   try{
