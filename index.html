@@ -171,7 +171,7 @@
     body{background:#fff;color:#111;font-size:12px}
     .wrap{max-width:none;padding:0}
     .printhead{display:block;font-size:11px;color:#444;margin:4px 0 8px}
-    .topbtns,#map,#d_windy,#d_wx,#d_rw,#d_ap,#setbox,.links,.note,footer,#win,.legend,#q,#qres,.chk,#routeBox>p,#localBox>p,#basebox,.vfoot,#alt,label[for=alt],.rp .x,#winlbl,.sh2,#toast,#pilotbar a,
+    .topbtns,#map,#asplg,#d_windy,#d_wx,#d_rw,#d_ap,#setbox,.links,.note,footer,#win,.legend,#q,#qres,.chk,#routeBox>p,#localBox>p,#basebox,.vfoot,#alt,label[for=alt],.rp .x,#winlbl,.sh2,#toast,#pilotbar a,
     #modeSeg button:not(.on),#aircraft button:not(.on),#license button:not(.on),#days button:not(.on),#durSeg button:not(.on){display:none!important}
     .seg{display:flex;gap:6px} .seg button{height:auto;padding:2px 8px;color:#111;background:#dbe7fb;border-color:#9bb8ea}
     .step{margin-top:10px;break-inside:avoid} .lbl{margin:6px 0 3px}
@@ -226,6 +226,7 @@
       <div class="search"><input id="b_q" type="search" autocomplete="off" placeholder="Il tuo campo: codice, nome o comune" aria-label="Cerca il campo base"><div id="b_res" class="res"></div></div>
     </div>
       <div id="map" role="region" aria-label="Mappa della rotta"></div>
+      <p class="sub" id="asplg" hidden style="margin:8px 0 0"><span style="color:#f85149">■</span> da evitare col tuo titolo · <span style="color:#d29922">■</span> contatto radio o verifica AIP/NOTAM · tratteggio = la zona inizia in quota. <b style="color:var(--txt)">Tieni premuto</b> su un punto della mappa per sapere quali spazi ci sono.</p>
   </section>
 
   <section class="step" id="st3" aria-labelledby="h3t">
@@ -1317,6 +1318,19 @@ function drawMap(){
     };
     NAV.setAip();
     NAV.aspl=Lf.layerGroup().addTo(NAV.map);
+    // tutti gli spazi aerei: interruttore nel menu dei livelli; con un piano di volo si accendono da soli
+    NAV.all=Lf.layerGroup(); NAV.allR=Lf.canvas?Lf.canvas({padding:.3}):undefined;
+    NAV.ctrl.addOverlay(NAV.all,"Spazi aerei (ATZ, CTR, zone P/R/D…)");
+    NAV.map.on("overlayadd overlayremove",e=>{if(e.layer!==NAV.all||NAV.sync)return;const on=e.type==="overlayadd";
+      if(S.mode==="route")NAV.aspR=on;else{NS.aspL=on;navSave(NS)} aspAllShow(on)});
+    NAV.map.on("contextmenu",e=>{if(Date.now()-(NAV.lp||0)>1500)aspHere(e.latlng)});
+    { // pressione lunga col dito (iPhone non genera il clic destro)
+      const el=NAV.map.getContainer(); let t=null,x0=0,y0=0;
+      el.addEventListener("touchstart",e=>{if(e.touches.length!==1){clearTimeout(t);return}const p=e.touches[0];x0=p.clientX;y0=p.clientY;
+        clearTimeout(t);t=setTimeout(()=>{NAV.lp=Date.now();aspHere(NAV.map.mouseEventToLatLng(p))},550)},{passive:true});
+      el.addEventListener("touchmove",e=>{const p=e.touches[0];if(Math.hypot(p.clientX-x0,p.clientY-y0)>10)clearTimeout(t)},{passive:true});
+      el.addEventListener("touchend",()=>clearTimeout(t),{passive:true});
+    }
     Lf.circleMarker([LAT,LON],{radius:8,color:"#58a6ff",weight:3}).addTo(NAV.map).bindTooltip(HOMEAP.c,{permanent:true,direction:"right"});
     const apl=Lf.layerGroup(), rend=Lf.canvas?Lf.canvas({padding:.5,tolerance:14}):undefined; // tolleranza: si tocca anche vicino al punto
     AIRF.forEach(a=>{if(a.c===HOMEAP.c)return;
@@ -1327,7 +1341,7 @@ function drawMap(){
       const g=el.querySelector("[data-go]");if(g)g.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();addAirport(apByCode(g.dataset.go))};
       const sh=el.querySelector("[data-sheet]");if(sh)sh.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();apSheet(sh.dataset.sheet)};
       const d=el.querySelector("[data-del]");if(d)d.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();delPoint(+d.dataset.del)}});
-    NAV.map.on("click",ev=>{
+    NAV.map.on("click",ev=>{ if(Date.now()-(NAV.lp||0)<1500)return;
       addRoutePoint({lat:+ev.latlng.lat.toFixed(5),lon:+ev.latlng.lng.toFixed(5),name:wpName()});
     });
   }
@@ -1335,6 +1349,10 @@ function drawMap(){
   const redraw=key!==NAV.key; NAV.key=key;
   if(redraw){NAV.mks.forEach(m=>NAV.map.removeLayer(m)); NAV.mks=[];
   if(NAV.line){NAV.map.removeLayer(NAV.line);NAV.line=null}}
+  if(NAV.lastMode!==S.mode){if(S.mode==="route")NAV.aspR=true; NAV.lastMode=S.mode}
+  const wantAll=S.mode==="route"?NAV.aspR!==false:!!NS.aspL;
+  if(wantAll!==NAV.map.hasLayer(NAV.all)){NAV.sync=true;wantAll?NAV.all.addTo(NAV.map):NAV.map.removeLayer(NAV.all);NAV.sync=false}
+  aspAllShow(wantAll);
   NAV.aspl.clearLayers(); NAV.zl={};
   const zcol=lv=>lv==="nogo"?"#f85149":lv==="warn"?"#d29922":"#58a6ff";
   const addZone=(a,lv,w)=>{if(NAV.zl[zid(a)])return;NAV.zl[zid(a)]=Lf.geoJSON(a.geometry,{style:{color:zcol(lv),weight:w||2,fillOpacity:.1,dashArray:lv==="info"?"4 4":null},interactive:false}).addTo(NAV.aspl)};
@@ -1357,6 +1375,29 @@ function drawMap(){
       if(LOC&&LOC.near)LOC.near.filter(z=>z.d>0&&(FL.rows.find(x=>x.zones)||{zones:[]}).zones.includes(zid(z.a))).forEach(z=>addZone(z.a,"info",1.5))}
     if(NAV.fit){NAV.map.setView([LAT,LON],11);NAV.fit=false}
   }
+}
+
+// zone mostrate sulla mappa: colore secondo il titolo; tratteggio se iniziano in quota
+function aspLow(a){const l=a.lowerLimit;if(!l)return true;if(l.referenceDatum===0)return limFt(l)<=1000;return l.unit===6?+l.value<30:limFt(l)<3000}
+function aspAllShow(on){
+  const lg=$("asplg"); if(lg)lg.hidden=!on;
+  if(!on||!window.OAIP||!window.OAIP.asp)return;
+  const k=S.lic; if(NAV.allK===k)return; NAV.allK=k; NAV.all.clearLayers();
+  const basic=!!LIC[S.lic].airportKm, Lf=window.L;
+  const items=aspItems(window.OAIP.asp).sort((x,y)=>(aspLow(x)?1:0)-(aspLow(y)?1:0));
+  items.forEach(a=>{const lv=zoneLevel(a.type,basic).lv, low=aspLow(a);
+    Lf.geoJSON(a.geometry,{renderer:NAV.allR,interactive:false,style:{color:lv==="nogo"?"#f85149":"#d29922",weight:low?1.8:1,opacity:low?.9:.6,fillOpacity:low?.08:0,dashArray:low?null:"5 5"}}).addTo(NAV.all)});
+}
+function aspHere(ll){
+  if(!window.OAIP||!window.OAIP.asp)return;
+  const basic=!!LIC[S.lic].airportKm;
+  const z=aspItems(window.OAIP.asp).filter(a=>ll.lng>=a._b[0]&&ll.lng<=a._b[2]&&ll.lat>=a._b[1]&&ll.lat<=a._b[3]&&inGeom(ll.lng,ll.lat,a.geometry))
+    .sort((x,y)=>(limFt(x.lowerLimit)||0)-(limFt(y.lowerLimit)||0));
+  const html=z.length?`<b>Spazi aerei in questo punto</b>`+z.map(a=>{const zl=zoneLevel(a.type,basic);
+    return `<div style="margin-top:8px"><span style="color:${zl.lv==="nogo"?"#f85149":"#d29922"}">●</span> <b>${esc(a.name)}</b> · ${ASPT[a.type]}<br>${limWords(a.lowerLimit)} → ${limWords(a.upperLimit)}<br><span class="sub">${zl.why}${aspLow(a)?"":" (vale solo se sali fino alla sua base)"}</span></div>`}).join("")
+    +`<div class="sub" style="margin-top:8px">Dati openAIP del ${esc(window.OAIP.date||"")}: verifica su AIP e NOTAM.</div>`
+    :`<b>Nessuno spazio aereo</b> in questo punto secondo openAIP.<div class="sub">Verifica comunque su AIP e NOTAM.</div>`;
+  window.L.popup({maxWidth:300}).setLatLng(ll).setContent(html).openOn(NAV.map);
 }
 
 // ---------- Windy ----------
