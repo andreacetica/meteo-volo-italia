@@ -99,7 +99,9 @@
     <div class="days" id="days"></div>
   </header>
 
-  <div class="acrow"><span class="sub">Velivolo:</span> <span class="days" id="aircraft"></span></div>
+  <div class="acrow"><span class="sub">Velivolo:</span> <span class="days" id="aircraft"></span>
+    <span class="sub" style="margin-left:10px">Titolo:</span> <span class="days" id="license"></span></div>
+  <div id="pilotbar" class="sub" style="margin:6px 0 2px"></div>
 
   <div id="verdict" class="verdict warn"><span class="dot"></span><div>Caricamento dati…</div></div>
 
@@ -120,6 +122,7 @@
     <label>Partenza alle<select id="n_hour"></select></label>
     <label>Quota di crociera
       <select id="n_alt">
+        <option value="975">~1.000 ft (975 hPa)</option>
         <option value="950">~1.500 ft (950 hPa)</option>
         <option value="925" selected>~2.500 ft (925 hPa)</option>
         <option value="900">~3.300 ft (900 hPa)</option>
@@ -182,6 +185,14 @@
       <label>Probabilità pioggia max (%)<input id="s_pop" type="number" min="0" max="100"></label>
     </div>
     <p class="sub" id="s_pohnote"></p>
+    <h3 style="font-size:15px;margin:14px 0 6px">🧑‍✈️ Esperienza recente (valida per tutti i velivoli)</h3>
+    <p class="sub">Se è passato troppo tempo dall'ultimo volo, il semaforo usa limiti più prudenti. Soglia e riduzione le decidi tu, meglio se insieme al tuo istruttore: lasciale vuote per non usarle.</p>
+    <div class="settings">
+      <label>Data dell'ultimo volo<input id="s_last" type="date"></label>
+      <label>Dopo quanti giorni fermo diventare prudente<input id="s_days" type="number" min="1" placeholder="es. 30"></label>
+      <label>Riduzione dei limiti di vento, raffiche e traverso (%)<input id="s_red" type="number" min="0" max="90" placeholder="es. 25"></label>
+      <label><span><input id="s_bip" type="checkbox"> Abilitazione al biposto (passeggero)</span></label>
+    </div>
     <p><button id="s_save">Salva</button> <button id="s_reset">Ripristina valori di esempio</button></p>
   </details>
 
@@ -205,6 +216,21 @@ const AIRF=[{"c":"IT-0001","n":"Il Falco Airfield","m":"Mazzè (TO)","t":"s","la
 let HOMEAP=null, LAT=0, LON=0;
 function setHome(code){HOMEAP=AIRF.find(a=>a.c===code)||AIRF.find(a=>a.c==="LIQQ");LAT=HOMEAP.la;LON=HOMEAP.lo;}
 const LIM={wind:15,gust:20,xw:10,xwpoh:"",vis:5,base:1500,pop:40};
+// Titoli di volo. Regole VDS dal DPR 9 luglio 2010 n. 133, art. 9 (testo: normattiva.it)
+const LIC={
+  "VDS basico":{day:true,ceiling:true,airportKm:5,note:"DPR 133/2010 art. 9: volo a vista diurno fuori dalle nubi; fuori da spazi aerei controllati e ATZ e ad almeno 5 km dagli aeroporti (salvo autorizzazione ENAC); massimo 500 ft dal suolo, 1.000 ft sabato, domenica e festività nazionali, riferiti all'ostacolo più alto entro 5 km; divieto di sorvolo di centri abitati e assembramenti."},
+  "VDS avanzato":{day:true,ceiling:false,airportKm:0,note:"DPR 133/2010 art. 9: volo a vista diurno fuori dalle nubi; con apparecchio e pilota avanzati si possono usare i servizi di navigazione aerea e lo spazio aereo aperto al volo a vista, secondo le regole di ciascuno spazio aereo."}
+};
+// Festività nazionali (L. 260/1949 e successive; 4 ottobre dal 2026, L. 151/2025)
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+function isFestivo(dstr){
+  const d=new Date(dstr+"T12:00"), y=d.getFullYear(), md=`${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  if(d.getDay()===0||d.getDay()===6)return true;
+  const fixed=["01-01","01-06","04-25","05-01","06-02","08-15","11-01","12-08","12-25","12-26"]; if(y>=2026)fixed.push("10-04");
+  if(fixed.includes(md))return true;
+  const em=easter(y); em.setDate(em.getDate()+1); return em.toDateString()===d.toDateString();
+}
+function vdsCeiling(dstr){return isFestivo(dstr)?1000:500}
 const AIRCRAFT=["Tecnam P92","Cessna 172"];
 const ACDEF={"Tecnam P92":{...LIM},"Cessna 172":{...LIM,xwpoh:15}};
 const ACINFO={
@@ -217,7 +243,7 @@ setHome(S.home);
 
 function load(){
   let o={};try{o=JSON.parse(localStorage.getItem("meteoVoloSet")||"{}")}catch(e){}
-  const st={home:o.home||"LIQQ",rwh:o.rwh||"",rwcustom:o.rwcustom||"",ac:o.ac&&AIRCRAFT.includes(o.ac)?o.ac:"Tecnam P92",prof:{}};
+  const st={lic:o.lic&&["VDS basico","VDS avanzato"].includes(o.lic)?o.lic:"VDS basico",last:o.last||"",rdays:o.rdays||"",rred:o.rred||"",bip:!!o.bip,home:o.home||"LIQQ",rwh:o.rwh||"",rwcustom:o.rwcustom||"",ac:o.ac&&AIRCRAFT.includes(o.ac)?o.ac:"Tecnam P92",prof:{}};
   AIRCRAFT.forEach(a=>{st.prof[a]=Object.assign({},ACDEF[a],(o.prof&&o.prof[a])||{})});
   return st;
 }
@@ -245,8 +271,18 @@ function comps(windDir,speed,rwyHdg){
   return {head:speed*Math.cos(a), cross:speed*Math.sin(a)};
 }
 
+function recency(){
+  if(!S.last)return {days:null,active:false};
+  const days=Math.floor((Date.now()-new Date(S.last+"T12:00"))/864e5);
+  const N=parseFloat(S.rdays), p=parseFloat(S.rred);
+  return {days,active:!isNaN(N)&&!isNaN(p)&&days>N,p:isNaN(p)?0:p,N};
+}
+function effLimits(){
+  const rc=recency(), f=rc.active?1-rc.p/100:1;
+  return {...LM,wind:+(LM.wind*f).toFixed(1),gust:+(LM.gust*f).toFixed(1),xw:+(LM.xw*f).toFixed(1),xwpoh:LM.xwpoh};
+}
 function hourEval(i){
-  const h=DATA.hourly, issues=[], warns=[];
+  const h=DATA.hourly, issues=[], warns=[], LM=effLimits(), lic=LIC[S.lic];
   const w=h.wind_speed_10m[i], g=h.wind_gusts_10m[i], vis=h.visibility[i]/1000;
   const spread=h.temperature_2m[i]-h.dew_point_2m[i], base=Math.max(0,spread*400);
   const pop=h.precipitation_probability[i], code=h.weather_code[i], low=h.cloud_cover_low[i];
@@ -269,7 +305,8 @@ function hourEval(i){
   if([45,48].includes(code))issues.push("Nebbia prevista");
   if([56,57,66,67].includes(code))issues.push("Precipitazioni gelate");
   if(h.cape[i]>1000)warns.push(`Atmosfera instabile (CAPE ${r(h.cape[i])} J/kg)`);
-  if(!h.is_day[i])warns.push("Ora notturna");
+  if(!h.is_day[i]){ if(lic.day)issues.push(`${S.lic}: solo dall'alba al tramonto (volo a vista diurno)`); else warns.push("Ora notturna"); }
+  if(lic.ceiling&&low>=50&&base<vdsCeiling(h.time[i].slice(0,10)))warns.push(`Base nubi stimata (~${r(Math.round(base/100)*100)} ft) sotto la tua quota massima VDS di ${vdsCeiling(h.time[i].slice(0,10))} ft: resta fuori dalle nubi`);
   return {level:issues.length?"nogo":warns.length?"warn":"go",issues,warns,xw,base};
 }
 
@@ -296,6 +333,15 @@ function render(){
   }).join("");
   $("days").querySelectorAll("button").forEach(b=>b.onclick=()=>{dayIdx=+b.dataset.d;selHour=null;selManual=dayIdx!==0;render()});
 
+  $("license").innerHTML=Object.keys(LIC).map(l=>`<button class="${l===S.lic?"on":""}" data-l="${l}">${l}</button>`).join("");
+  $("license").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.lic=b.dataset.l;save();render()});
+  {const rc=recency(), dstr=DATA.daily.time[dayIdx], lic=LIC[S.lic];
+   const bits=[`<b>${S.lic}</b>${S.bip?" con biposto":""}`];
+   if(lic.ceiling)bits.push(`quota massima ${vdsCeiling(dstr)} ft dal suolo ${isFestivo(dstr)?"(sabato, domenica o festivo)":"(giorno feriale)"}, riferita all'ostacolo più alto entro 5 km`);
+   if(lic.airportKm)bits.push(`fuori da CTR e ATZ, almeno ${lic.airportKm} km dagli aeroporti`);
+   bits.push("solo dall'alba al tramonto");
+   if(rc.days!=null)bits.push(rc.active?`<span style="color:var(--warn)">⚠️ ultimo volo ${rc.days} giorni fa: limiti di vento ridotti del ${rc.p}%</span>`:`ultimo volo ${rc.days} giorni fa`);
+   $("pilotbar").innerHTML=`🧑‍✈️ ${bits.join(" · ")} <span title="${lic.note}" style="cursor:help">ⓘ</span>`;}
   $("aircraft").innerHTML=AIRCRAFT.map(a=>`<button class="${a===S.ac?"on":""}" data-a="${a}">${a}</button>`).join("");
   $("aircraft").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.ac=b.dataset.a;LM=S.prof[S.ac];save();initSettings();navInit();render()});
 
@@ -311,7 +357,7 @@ function render(){
   const sr=dly.sunrise[dayIdx].slice(11,16), ss=dly.sunset[dayIdx].slice(11,16);
   const dayEvals=hrs.filter(k=>h.is_day[k]).map(k=>({k,e:hourEval(k)}));
   const goodHours=dayEvals.filter(x=>x.e.level==="go").map(x=>h.time[x.k].slice(11,16));
-  const lvl=ev.level, txt={go:`Condizioni nei limiti per ${S.ac}`,warn:`Attenzione con ${S.ac}: qualche valore vicino ai limiti`,nogo:`Fuori dai limiti per ${S.ac}`}[lvl];
+  const lvl=ev.level, _t={go:`Condizioni nei limiti per ${S.ac}`,warn:`Attenzione con ${S.ac}: qualche valore vicino ai limiti`,nogo:`Fuori dai limiti per ${S.ac}`}[lvl], txt=_t+(recency().active?" (limiti ridotti per inattività)":"");
   $("verdict").className="verdict "+lvl;
   $("verdict").innerHTML=`<span class="dot"></span><div>${txt} alle ${h.time[i].slice(11,16)}
     <div class="sub" style="font-weight:400">Ore nei limiti in questo giorno: ${goodHours.length?goodHours.join(" · "):"nessuna"} · Alba ${sr} · Tramonto ${ss}</div>
@@ -420,10 +466,12 @@ function initSettings(){
   $("s_rw").innerHTML=RL.map(x=>`<option value="${x.h}">${x.id} (${n3c(x.h)}°/${n3c((x.h+180)%360)}°)</option>`).join("")+`<option value="custom">Personalizzata…</option>`;
   $("s_rw").value=S.rwh&&[...$("s_rw").options].some(o=>o.value===S.rwh)?S.rwh:(RL.length?String(RL[0].h):"custom"); $("s_rwcustom").value=S.rwcustom;
   ["wind","gust","xw","xwpoh","vis","base","pop"].forEach(k=>$("s_"+k).value=LM[k]);
+  $("s_last").value=S.last||""; $("s_days").value=S.rdays||""; $("s_red").value=S.rred||""; $("s_bip").checked=!!S.bip;
   $("s_save").onclick=()=>{
     S.rwh=$("s_rw").value; S.rwcustom=$("s_rwcustom").value;
     ["wind","gust","xw","vis","base","pop"].forEach(k=>LM[k]=+$("s_"+k).value);
     LM.xwpoh=$("s_xwpoh").value;
+    S.last=$("s_last").value; S.rdays=$("s_days").value; S.rred=$("s_red").value; S.bip=$("s_bip").checked;
     save(); if(DATA)render(); $("setbox").open=false;
   };
   $("s_reset").onclick=()=>{S.prof[S.ac]={...ACDEF[S.ac]};LM=S.prof[S.ac];save();initSettings();if(DATA)render()};
@@ -433,7 +481,7 @@ function initSettings(){
 // ================= NAVIGAZIONE =================
 
 // ---- profilo verticale
-const ALTFT={"950":1500,"925":2500,"900":3300,"850":5000};
+const ALTFT={"975":1000,"950":1500,"925":2500,"900":3300,"850":5000};
 async function elevations(pts){
   const out=[];
   for(let i=0;i<pts.length;i+=100){
@@ -457,8 +505,13 @@ async function drawProfile(P,legs,lvl,cloud){
   }
   let el;
   try{el=(await elevations(samp)).map(m=>m*3.281)}catch(e){box.innerHTML=`<div class="card sub">Profilo del terreno non disponibile (${e.message}).</div>`;return}
+  const lic=LIC[S.lic], ceilAGL=vdsCeiling(DATA.daily.time[dayIdx]);
+  // limite VDS: massimo del terreno entro ±5 km lungo la rotta + 500/1000 ft
+  const win=Math.max(1,Math.round(N*(5/1.852)/tot));
+  const ceil=lic.ceiling?el.map((_,k)=>Math.max(...el.slice(Math.max(0,k-win),k+win+1))+ceilAGL):null;
   const cruise=ALTFT[lvl], maxT=Math.max(...el), top=Math.max(cruise,maxT,...cloud.filter(x=>x!=null))*1.15+300;
   const W=900,H=260,pl=48,pr=12,pt=14,pb=28, X=d=>pl+(W-pl-pr)*d/tot, Y=a=>H-pb-(H-pt-pb)*a/top;
+  const over=ceil?Math.max(...ceil.map(c=>cruise-c)):null;
   const terr=`M${X(0)},${Y(0)} `+samp.map((p,k)=>`L${X(p[2]).toFixed(1)},${Y(el[k]).toFixed(1)}`).join(" ")+` L${X(tot)},${Y(0)} Z`;
   const clear=Math.min(...el.map(e=>cruise-e)), worst=samp[el.indexOf(maxT)];
   let grid="";
@@ -469,6 +522,7 @@ async function drawProfile(P,legs,lvl,cloud){
   <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profilo verticale della rotta">
     ${grid}<path d="${terr}" fill="#6b4f2a" fill-opacity=".75" stroke="#a0784a"/>
     ${cl}
+    ${ceil?`<path d="M${samp.map((p,k)=>`${X(p[2]).toFixed(1)},${Y(ceil[k]).toFixed(1)}`).join(" L")}" fill="none" stroke="#d29922" stroke-width="2.5"/><text x="${pl+6}" y="${Y(ceil[0])-6}" fill="#d29922" font-size="12">limite ${S.lic}: ${ceilAGL} ft dal suolo</text>`:""}
     <line x1="${pl}" x2="${W-pr}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="3"/>
     <text x="${W-pr-4}" y="${Y(cruise)-6}" fill="#d6336c" font-size="12" text-anchor="end">crociera ~${cruise} ft</text>
     ${wps}
@@ -476,9 +530,10 @@ async function drawProfile(P,legs,lvl,cloud){
   <div class="grid" style="margin-top:8px">
     <div class="card"><div class="k">Terreno più alto sulla rotta</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(worst[2],1)} NM dalla partenza</div></div>
     <div class="card" style="${clear<1000?"border-color:var(--nogo)":""}"><div class="k">Margine minimo sul terreno</div><div class="v" style="${clear<1000?"color:var(--nogo)":""}">${r(clear)} ft</div><div class="s">tra quota di crociera e terreno · ostacoli esclusi</div></div>
+    ${ceil?`<div class="card" style="${over>0?"border-color:var(--nogo)":""}"><div class="k">Quota massima ${S.lic}</div><div class="v" style="${over>0?"color:var(--nogo)":""}">${over>0?`oltre di ${r(over)} ft`:"rispettata"}</div><div class="s">${over>0?`la crociera a ~${cruise} ft supera il limite (linea arancione): scegli una quota più bassa`:`linea arancione: terreno più alto entro ~5 km + ${ceilAGL} ft`}</div></div>`:""}
     <div class="card"><div class="k">Base nubi stimata (tratteggio)</div><div class="v">${cloud.some(x=>x!=null)?r(Math.min(...cloud.filter(x=>x!=null)))+" ft":"–"}</div><div class="s">la più bassa sulla rotta, sul livello del mare</div></div>
   </div>
-  <p class="sub">Terreno da modello di elevazione (Open-Meteo, griglia ~90 m): non comprende edifici, tralicci, antenne e cavi. Quote in ft sul livello del mare, quota di crociera approssimata dal livello di pressione.</p>`;
+  <p class="sub">Terreno da modello di elevazione (Open-Meteo, griglia ~90 m): non comprende edifici, tralicci, antenne e cavi. ${ceil?"Il limite VDS è calcolato solo lungo la linea di rotta, non in tutto il raggio di 5 km: è un'indicazione, non una verifica.":""} Quote in ft sul livello del mare, quota di crociera approssimata dal livello di pressione.</p>`;
 }
 
 // ---- Windy
@@ -610,12 +665,19 @@ async function navCalc(){
     let j=H.time.indexOf(ak); if(j<0)j=H.time.indexOf(DATA.hourly.time[k]);
     const ss=DATA.daily.sunset[dayIdx].slice(11,16), ssd=new Date(DATA.daily.sunset[dayIdx]);
     const fuel=a.fuel*tot.h, late=t>ssd;
+    // vicinanza aeroporti per VDS basico
+    const lic=LIC[S.lic], nearAp=[];
+    if(lic.airportKm){
+      const kmP=(p,a,b)=>{const k=Math.cos(p.lat*Math.PI/180)*111.32,ax=(a.lon-p.lon)*k,ay=(a.lat-p.lat)*110.57,bx=(b.lon-p.lon)*k,by=(b.lat-p.lat)*110.57,dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;let tt=L2?-(ax*dx+ay*dy)/L2:0;tt=Math.max(0,Math.min(1,tt));return Math.hypot(ax+tt*dx,ay+tt*dy)};
+      AIRF.filter(x=>x.t==="m"||x.t==="l").forEach(x=>{let m=1e9;legs.forEach(L=>m=Math.min(m,kmP({lat:x.la,lon:x.lo},L.A,L.B)));if(m<lic.airportKm)nearAp.push({x,m})});
+    }
+    const apWarn=nearAp.length?`<div class="card" style="border-color:var(--nogo);margin-bottom:10px"><div class="k">⛔ ${S.lic}: rotta a meno di ${lic.airportKm} km da aeroporti</div><div class="s" style="color:var(--txt);font-size:14px;margin-top:4px">${nearAp.map(o=>`${o.x.c} ${o.x.n} (${r(o.m,1)} km)`).join(" · ")}</div><div class="s">Serve un'autorizzazione specifica (DPR 133/2010 art. 9). Controlla anche CTR, ATZ e zone su SkyDemon o con openAIP.</div></div>`:"";
     const rows=legs.map((L,n)=>`<tr>
       <td>${n+1}</td><td style="text-align:left">${L.A.name} → ${L.B.name}</td>
       <td>${n3(L.g.tc)}°</td><td>${r(L.g.dist,1)}</td><td>${n3(L.wd)}°/${r(L.ws)}</td>
       <td>${L.tr.wca>=0?"+":""}${r(L.tr.wca)}°</td><td class="hl"><b>${n3(L.tr.th)}°</b></td><td>${isNaN(v)?"–":n3(L.tr.th-v)+"°"}</td>
       <td>${r(L.tr.gs)}</td><td>${hm(L.h)}</td><td>${clk(L.arr)}</td><td>${a.fuel?r(a.fuel*L.h,1):"–"}</td></tr>`).join("");
-    out.innerHTML=`
+    out.innerHTML=apWarn+`
     <div class="grid">
       <div class="card"><div class="k">Distanza totale</div><div class="v">${r(tot.d,1)} NM</div><div class="s">${r(tot.d*1.852,1)} km · ${legs.length} tratt${legs.length>1?"e":"a"}</div></div>
       <div class="card"><div class="k">Tempo di volo</div><div class="v">${hm(tot.h)}</div><div class="s">partenza ${DATA.hourly.time[k].slice(11,16)} · arrivo ~${clk(t)}</div></div>

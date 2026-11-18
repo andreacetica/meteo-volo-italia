@@ -21,15 +21,19 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 - Tabella **ora per ora** per oggi, domani e dopodomani.
 - **METAR e TAF** dei 3 aeroporti più vicini.
 
-**Limiti per velivolo**
-- Profili per **Tecnam P92** e **Cessna 172**, ognuno con i propri limiti personali (vento, raffiche, traverso, visibilità, base nubi, pioggia) e il traverso massimo dimostrato dal manuale.
+**Il semaforo personale: meteo × velivolo × titolo × esperienza**
+- **Velivolo**: profili per **Tecnam P92** e **Cessna 172**, ognuno con i propri limiti personali (vento, raffiche, traverso, visibilità, base nubi, pioggia) e il traverso massimo dimostrato dal manuale.
+- **Titolo di volo**: **VDS basico** o **VDS avanzato**, con le regole del DPR 133/2010 art. 9: volo solo dall'alba al tramonto; per il basico quota massima 500 ft dal suolo (1.000 ft sabato, domenica e festività nazionali) e distanza di almeno 5 km dagli aeroporti.
+- **Esperienza recente**: se non voli da più giorni di quanti decidi tu, i limiti di vento si riducono della percentuale che scegli, e il semaforo te lo dice.
+- Il semaforo **spiega sempre il perché**.
 
 **Navigazione (pianificazione a terra)**
 - Costruisci la rotta sulla mappa come in un'app EFB: tocca per aggiungere un punto, trascina per spostarlo, tocca per eliminarlo.
 - Cerca aeroporti e aviosuperfici per codice, nome o comune, oppure paesi.
 - **Log di navigazione** per ogni tratta: rotta vera, distanza, vento in quota all'ora di passaggio, correzione di deriva, prua vera e magnetica, velocità al suolo, tempi, orari, carburante.
 - Schede degli aeroporti in rotta con **vento previsto all'arrivo** e pista consigliata.
-- **Profilo verticale** della rotta: terreno, quota di crociera, base nubi stimata e margine minimo sul terreno.
+- **Profilo verticale** della rotta: terreno, quota di crociera, base nubi stimata, margine minimo sul terreno e, per il VDS basico, la linea della quota massima consentita.
+- Per il VDS basico, **avviso se la rotta passa a meno di 5 km da un aeroporto**.
 - **Windy** integrato (widget ufficiale) centrato sulla rotta: vento, raffiche, nuvole, pioggia, temperatura, pressione.
 - Mappa topografica o satellite, livello **spazi aerei openAIP** (serve una chiave gratuita) ed esportazione della rotta in **GPX**.
 
