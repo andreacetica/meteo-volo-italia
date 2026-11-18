@@ -1,7 +1,7 @@
 # ✈️ Meteo Volo Italia
 
-**Meteo, vento in pista, limiti personali e navigazione VFR per oltre 650 aeroporti e aviosuperfici italiani.**
-Gratuito, open source, senza registrazione. Funziona nel browser, anche da telefono.
+**Pianifica il volo VFR in Italia in tre passi: dove vai, con cosa e quando. Poi un semaforo unico ti dice se si può fare, per tutto il volo.**
+Per piloti VDS e PPL. Gratuito, open source, senza registrazione. Funziona nel browser e si installa sul telefono come un'app.
 
 👉 **Apri l'app: https://andreacetica.github.io/meteo-volo-italia/**
 
@@ -9,40 +9,36 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 
 ---
 
-## Cosa fa
+## Come funziona
 
-**Il tuo campo base**
-- Scegli il tuo campo tra **660 aeroporti e aviosuperfici italiani**: piste, orientamento, lunghezza, fondo, quota e frequenze, quando sono in archivio.
-- Un **semaforo** (nei limiti / attenzione / fuori limiti) per l'ora scelta e per le prossime 3 ore, con alba e tramonto.
-- **Vento** al suolo con raffiche, a 80 m (circuito), a circa 2.500 e 5.000 ft.
-- **Componenti del vento** per ogni testata (frontale/in coda e traverso, anche con le raffiche) e pista consigliata.
-- **Cielo e visibilità**: nubi basse, medie e alte, base nubi stimata, visibilità, pioggia.
-- **Temperatura e pressione**: punto di rugiada, umidità, QNH approssimato, zero termico, instabilità.
-- Tabella **ora per ora** per oggi, domani e dopodomani.
-- **METAR e TAF** dei 3 aeroporti più vicini.
+**① Dove vai**
+- **Giro locale** attorno al tuo campo (30 minuti, 1 ora o 2 ore), oppure **verso un campo**.
+- Cerca la destinazione tra **660 aeroporti e aviosuperfici italiani**, o un paese. Aggiungi tappe dalla ricerca o toccando la mappa, e spunta **ritorno** per l'andata e ritorno.
 
-**Il semaforo personale: meteo × velivolo × titolo × esperienza**
-- **Velivolo**: profili per **Tecnam P92** e **Cessna 172**, ognuno con i propri limiti personali (vento, raffiche, traverso, visibilità, base nubi, pioggia) e il traverso massimo dimostrato dal manuale.
-- **Titolo di volo** legato al velivolo: con un apparecchio VDS **VDS basico** o **VDS avanzato**, con un velivolo certificato **LAPL(A)** o **PPL(A)** (VFR diurno). Per il VDS valgono con le regole del DPR 133/2010 art. 9: volo solo dall'alba al tramonto; per il basico quota massima 500 ft dal suolo (1.000 ft sabato, domenica e festività nazionali) e distanza di almeno 5 km dagli aeroporti.
-- **Esperienza recente**: se non voli da più giorni di quanti decidi tu, i limiti di vento si riducono della percentuale che scegli, e il semaforo te lo dice.
-- Il semaforo **spiega sempre il perché**.
+**② Con cosa e quando**
+- **Velivolo** (Tecnam P92, Cessna 172) e **titolo** legato al velivolo: VDS basico o avanzato per l'apparecchio VDS, LAPL(A) o PPL(A) per il velivolo certificato.
+- **Finestra di volo**: una striscia con tutti gli orari di partenza del giorno, ogni mezz'ora, colorata in verde, giallo o rosso in base al meteo **lungo tutto il volo** (partenza, rotta, arrivo) e alla luce del giorno. Tocchi un orario e lo scegli. L'app ti dice anche quali sono le **partenze migliori**.
+- La sera, a giornata finita, l'app propone da sola **domani**.
+- **Quota**: con il VDS basico l'app segue il terreno (massimo 500 ft dal suolo, 1.000 ft nel fine settimana e nei festivi, dal terreno più alto entro 5 km); con gli altri titoli scegli una quota fissa.
 
-**Navigazione (pianificazione a terra)**
-- Costruisci la rotta sulla mappa come in un'app EFB: tocca per aggiungere un punto, trascina per spostarlo, tocca per eliminarlo.
-- Cerca aeroporti e aviosuperfici per codice, nome o comune, oppure paesi.
-- **Log di navigazione** per ogni tratta: rotta vera, distanza, vento in quota all'ora di passaggio, correzione di deriva, prua vera e magnetica, velocità al suolo, tempi, orari, carburante.
-- Schede degli aeroporti in rotta con **vento previsto all'arrivo** e pista consigliata.
-- **Profilo verticale** della rotta: terreno, quota di crociera, base nubi stimata, margine minimo sul terreno e, per il VDS basico, la linea della quota massima consentita.
-- Per il VDS basico, **avviso se la rotta passa a meno di 5 km da un aeroporto**.
-- **Windy** integrato (widget ufficiale) centrato sulla rotta: vento, raffiche, nuvole, pioggia, temperatura, pressione.
-- Mappa topografica o satellite, livello **spazi aerei openAIP** (serve una chiave gratuita) ed esportazione della rotta in **GPX**.
-- **Avviso zone sulla rotta**: l'app segnala ATZ, CTR, TMA e zone P/R/D attraversate, in base al titolo. Dati openAIP, non ufficiali.
-- **Checklist "Verifica su AIP e NOTAM"**: per ogni rotta dice quali sezioni dell'eAIP ENAV controllare (ENR 5.1, ENR 5.6, ENR 2, AD 2) e quali campi chiamare.
+**③ Si può fare?**
+- Un **semaforo unico per tutto il volo**, con una riga per ogni controllo **nell'ordine in cui lo incontri**: partenza, zone attraversate (con miglia e minuti dalla partenza), meteo lungo la rotta, aeroporti entro 5 km (VDS basico), arrivo, luce del giorno.
+- Tocchi una riga e si apre la spiegazione: per le zone, cos'è, i limiti di quota in parole semplici, dove sei tu rispetto alla zona e dove verificarla sull'AIP. La zona si evidenzia sulla mappa.
+- Tiene conto dei **tuoi limiti personali** per ogni velivolo e dell'**esperienza recente** (limiti ridotti se non voli da tempo).
+
+**E poi**
+- **Condividi il piano** con un link, per esempio su WhatsApp con l'istruttore o con chi vola con te: chi lo apre vede lo stesso volo, con lo stesso orario e lo stesso velivolo.
+- **Stampa il piano** o salvalo in PDF, da tenere in volo.
+- **Log di navigazione** (rotta, vento all'ora di passaggio, deriva, prua vera e magnetica, velocità al suolo, tempi, carburante con riserva) ed esportazione **GPX**.
+- **Profilo verticale** con terreno, base nubi stimata e, per il VDS basico, la fascia in cui puoi volare.
+- **Checklist prima di partire**: quali sezioni dell'eAIP ENAV e quali NOTAM controllare per quel volo.
+- **Scheda di ogni campo**: piste, vento in pista, METAR e TAF, seconda fonte openAIP, contatti verificati e i tuoi appunti.
+- Meteo del campo ora per ora, Windy integrato, METAR e TAF vicini.
 
 ## Come si usa
 
-Apri il link dal computer o dal telefono. Su iPhone: Safari → **Condividi → Aggiungi alla schermata Home**.
-Le impostazioni (campo base, limiti, velocità, consumo, chiave openAIP) restano salvate solo nel tuo browser.
+Apri il link dal computer o dal telefono e installala: su iPhone, in Safari, **Condividi → Aggiungi alla schermata Home**; su Android, dal menu del browser, **Installa app**.
+Le impostazioni (campo base, limiti, velocità, consumo, appunti) restano salvate solo nel tuo browser.
 
 ## Da dove vengono i dati
 
@@ -52,7 +48,7 @@ Le impostazioni (campo base, limiti, velocità, consumo, chiave openAIP) restano
 | Aeroporti, piste, frequenze | [OurAirports](https://ourairports.com) | pubblico dominio |
 | METAR e TAF | [aviationweather.gov](https://aviationweather.gov) | pubblico dominio |
 | Spazi aerei e seconda scheda dei campi | [openAIP](https://www.openaip.net), CC BY-NC 4.0 | `data/openaip-it.js`, aggiornato ogni settimana da GitHub Actions (`tools/aggiorna_openaip.py`) |
-| Livello spazi aerei sulla mappa (facoltativo) | openAIP | con la chiave dell'utente |
+| Livello colorato degli spazi aerei sulla mappa (facoltativo) | openAIP | con la chiave dell'utente |
 | Quote del terreno | [Open-Meteo Elevation](https://open-meteo.com) (Copernicus DEM) | CC BY 4.0 |
 | Mappa meteo animata | widget ufficiale di [Windy.com](https://www.windy.com) | termini Windy |
 | Mappe | Esri, OpenTopoMap | vedi i rispettivi termini |
