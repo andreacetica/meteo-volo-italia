@@ -958,7 +958,7 @@ async function navCalc(){
       const kmP=(p,a,b)=>{const k=Math.cos(p.lat*Math.PI/180)*111.32,ax=(a.lon-p.lon)*k,ay=(a.lat-p.lat)*110.57,bx=(b.lon-p.lon)*k,by=(b.lat-p.lat)*110.57,dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;let tt=L2?-(ax*dx+ay*dy)/L2:0;tt=Math.max(0,Math.min(1,tt));return Math.hypot(ax+tt*dx,ay+tt*dy)};
       AIRF.filter(x=>x.t==="m"||x.t==="l").forEach(x=>{let m=1e9;legs.forEach(L=>m=Math.min(m,kmP({lat:x.la,lon:x.lo},L.A,L.B)));if(m<lic.airportKm)nearAp.push({x,m})});
     }
-    const apWarn=nearAp.length?`<div class="card" style="border-color:var(--nogo);margin-bottom:10px"><div class="k">⛔ ${S.lic}: rotta a meno di ${lic.airportKm} km da aeroporti</div><div class="s" style="color:var(--txt);font-size:14px;margin-top:4px">${nearAp.map(o=>`${o.x.c} ${o.x.n} (${r(o.m,1)} km)`).join(" · ")}</div><div class="s">Serve un'autorizzazione specifica (DPR 133/2010 art. 9). Controlla anche CTR, ATZ e zone su SkyDemon o con openAIP.</div></div>`:"";
+    const apWarn=nearAp.length?`<div class="card sub" style="border-left:3px solid var(--nogo);margin-bottom:10px">⛔ <b style="color:var(--txt)">Entro ${lic.airportKm} km da ${nearAp.map(o=>o.x.c).join(", ")}</b>: con il ${S.lic} serve l'autorizzazione ENAC.</div>`:"";
     const rows=legs.map((L,n)=>`<tr>
       <td>${n+1}</td><td style="text-align:left">${L.A.name} → ${L.B.name}</td>
       <td>${n3(L.g.tc)}°</td><td>${r(L.g.dist,1)}</td><td>${n3(L.wd)}°/${r(L.ws)}</td>
