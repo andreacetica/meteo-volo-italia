@@ -5,17 +5,27 @@ data/openaip-it.js, letto dall'app senza bisogno di chiave.
 Dati openAIP (https://www.openaip.net), licenza CC BY-NC 4.0:
 uso non commerciale con attribuzione. Dati della comunità, non ufficiali.
 
-Uso:  python3 tools/aggiorna_openaip.py
+Uso:  OPENAIP_API_KEY=la_tua_chiave python3 tools/aggiorna_openaip.py
 """
-import json, urllib.request, datetime, pathlib, sys
+import json, os, urllib.request, datetime, pathlib, sys
 
-BUCKET = "https://storage.googleapis.com/29f98e10-a489-4c82-ae5e-489dbcd4912f"
+API = "https://api.core.openaip.net/api"
+KEY = os.environ.get("OPENAIP_API_KEY", "").strip()
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "openaip-it.js"
 
-def get(name):
-    with urllib.request.urlopen(f"{BUCKET}/{name}", timeout=120) as r:
-        return json.load(r)
+def get(what):
+    """Scarica tutte le pagine di /airspaces o /airports per l'Italia."""
+    out, page = [], 1
+    while True:
+        req = urllib.request.Request(f"{API}/{what}?country=IT&limit=1000&page={page}",
+                                     headers={"x-openaip-api-key": KEY, "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=120) as r:
+            j = json.load(r)
+        out += j.get("items", [])
+        if page >= (j.get("totalPages") or 1):
+            return out
+        page += 1
 
 def rnd(c):
     if isinstance(c, list):
@@ -26,8 +36,10 @@ def lim(l):
     return {k: l.get(k) for k in ("value", "unit", "referenceDatum")} if l else None
 
 def main():
-    asp = get("it_asp.json")
-    apt = get("it_apt.json")
+    if not KEY:
+        sys.exit("Manca la chiave: imposta il secret OPENAIP_API_KEY nel repository (Settings > Secrets and variables > Actions).")
+    asp = get("airspaces")
+    apt = get("airports")
     if not isinstance(asp, list) or not isinstance(apt, list) or len(asp) < 50 or len(apt) < 50:
         sys.exit("Dati openAIP inattesi: file non aggiornato.")
     A = [{"_id": a.get("_id"), "name": a.get("name"), "type": a.get("type"), "icaoClass": a.get("icaoClass"),
