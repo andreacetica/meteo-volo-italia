@@ -334,6 +334,8 @@ function hourEval(i){
   return {level:issues.length?"nogo":warns.length?"warn":"go",issues,warns,xw,base};
 }
 
+// Ora di previsione più vicina all'orario attuale (alle 19:40 è quella delle 20:00)
+function nowKey(){const n=new Date(Date.now()+30*60e3);return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:00`}
 function dayHours(d){
   const t=DATA.hourly.time, date=DATA.daily.time[d], out=[];
   t.forEach((x,i)=>{ if(x.startsWith(date)){const hr=+x.slice(11,13); if(hr>=6&&hr<=20)out.push(i)} });
@@ -376,8 +378,7 @@ function render(){
 
   const hrs=dayHours(dayIdx);
   if(selHour==null||!hrs.includes(selHour)||(dayIdx===0&&!selManual)){
-    const now=new Date(), nowKey=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
-    const idx=h.time.indexOf(nowKey);
+    const idx=h.time.indexOf(nowKey());
     selHour=(dayIdx===0&&hrs.includes(idx))?idx:hrs.find(i=>+h.time[i].slice(11,13)===10)??hrs[0];
   }
   const i=selHour, ev=hourEval(i);
@@ -393,14 +394,14 @@ function render(){
     ${(ev.issues.length||ev.warns.length)?`<ul>${ev.issues.map(x=>`<li>⛔ ${x}</li>`).join("")}${ev.warns.map(x=>`<li>⚠️ ${x}</li>`).join("")}</ul>`:""}</div>`;
 
   // next hours strip
-  const now=new Date(), nk=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:00`;
+  const nk=nowKey(), clockNow=new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
   let start=dayIdx===0?h.time.indexOf(nk):selHour; if(start<0)start=selHour;
   $("nexttitle").textContent=dayIdx===0?`Adesso e prossime 3 ore · ${S.ac}`:`Dalle ${h.time[start].slice(11,16)} e 3 ore dopo · ${S.ac}`;
   const lab=["Adesso","+1 ora","+2 ore","+3 ore"];
   $("next").innerHTML=[0,1,2,3].map(n=>{const k=start+n; if(k>=h.time.length)return"";
     const e=hourEval(k), col={go:"var(--go)",warn:"var(--warn)",nogo:"var(--nogo)"}[e.level], word={go:"Nei limiti",warn:"Attenzione",nogo:"Fuori limiti"}[e.level];
     return `<div class="nx ${k===i?"sel":""}" data-k="${k}" style="border-top-color:${col}">
-      <div class="t">${dayIdx===0?lab[n]+" · ":""}${h.time[k].slice(11,16)}</div>
+      <div class="t">${dayIdx===0?lab[n]+" · ":""}${dayIdx===0&&n===0?clockNow:h.time[k].slice(11,16)}</div>${dayIdx===0&&n===0?`<div class="sub" style="font-size:12px">previsione delle ${h.time[k].slice(11,16)}</div>`:""}
       <div class="l" style="color:${col};font-weight:600">${word}${h.is_day[k]?"":" · notte"}</div>
       <div class="m">${arrow(h.wind_direction_10m[k])} ${r(h.wind_direction_10m[k])}° ${r(h.wind_speed_10m[k])} kt · raff. ${r(h.wind_gusts_10m[k])}</div>
       <div class="m">Traverso ${r(e.xw)} kt · base ~${r(Math.round(e.base/100)*100)} ft</div></div>`}).join("");
@@ -1027,7 +1028,18 @@ function baseInit(){
 }
 document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("a[data-sheet]");if(t&&!t.closest(".leaflet-popup")&&!t.closest("#apsheet")){e.preventDefault();apSheet(t.dataset.sheet)}});
 fillHeader(); baseInit(); initSettings(); navInit(); loadWeather(); loadMetar();
-setInterval(loadWeather,30*60*1000);
+setInterval(loadWeather,15*60*1000); // usa la cache: scarica solo se i dati hanno più di 15 minuti
+// Ogni minuto: aggiorna "Adesso" e passa all'ora successiva quando l'orologio la raggiunge
+let lastKey=nowKey();
+setInterval(()=>{if(!DATA||dayIdx!==0||selManual)return; const k=nowKey(); if(k!==lastKey){lastKey=k;selHour=null;render();navHours&&navHours()}else{const t=document.querySelector("#next .nx .t");if(t)t.firstChild.textContent=`Adesso · ${new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`}},60e3);
+// Quando riapri la pagina dopo un po' (telefono sbloccato, scheda ripresa) riparte dall'ora attuale
+let hiddenAt=0;
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){hiddenAt=Date.now();return}
+  if(hiddenAt&&Date.now()-hiddenAt>10*60e3){selManual=false;dayIdx=0;selHour=null;lastKey=nowKey()} // via da più di 10 minuti
+  if(DATA&&!selManual&&dayIdx===0)render();
+  loadWeather();
+});
 </script>
 </body>
 </html>
