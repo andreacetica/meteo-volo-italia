@@ -197,8 +197,20 @@
   </header>
 
   <div class="printhead" id="printhead"></div>
+
+
+
+
   <section class="step" id="st1" aria-labelledby="h1t">
-    <h2 class="sh" id="h1t"><span class="num">1</span>Dove vai</h2>
+    <h2 class="sh" id="h1t"><span class="num">1</span>Con cosa e quando</h2>
+    <div class="lbl" style="margin-top:0">Velivolo</div><div class="seg" id="aircraft"></div>
+    <div class="lbl">Titolo</div><div class="seg" id="license"></div>
+    <p id="pilotbar" class="sub" style="margin:8px 0 0"></p>
+    <div class="lbl">Giorno</div><div class="seg seg3" id="days"></div>
+  </section>
+
+  <section class="step" id="st2" aria-labelledby="h2t">
+    <h2 class="sh" id="h2t"><span class="num">2</span>Dove vai</h2>
     <ol class="rlist" id="rlist"></ol>
     <div class="search"><input id="q" type="search" autocomplete="off" enterkeyhint="search" aria-label="Dove vai? Cerca un campo o un paese"><div id="qres" class="res"></div></div>
     <div id="routeBox">
@@ -212,26 +224,17 @@
     <div id="basebox" hidden style="margin-top:10px">
       <div class="search"><input id="b_q" type="search" autocomplete="off" placeholder="Il tuo campo: codice, nome o comune" aria-label="Cerca il campo base"><div id="b_res" class="res"></div></div>
     </div>
-  </section>
-
-  <section class="step" id="st2" aria-labelledby="h2t">
-    <h2 class="sh" id="h2t"><span class="num">2</span>Con cosa e quando</h2>
-    <div class="lbl" style="margin-top:0">Velivolo</div><div class="seg" id="aircraft"></div>
-    <div class="lbl">Titolo</div><div class="seg" id="license"></div>
-    <p id="pilotbar" class="sub" style="margin:8px 0 0"></p>
-    <div class="lbl">Giorno</div><div class="seg seg3" id="days"></div>
-    <div class="lbl" id="winlbl">Quando partire</div>
-    <div class="win" id="win" role="group" aria-label="Orario di partenza"></div>
-    <div class="legend"><span><i style="background:var(--go)"></i>nei limiti</span><span><i style="background:var(--warn)"></i>attenzione</span><span><i style="background:var(--nogo)"></i>no</span><span id="winbest"></span></div>
-    <label class="lbl" for="alt" style="display:block">Quota</label><select id="alt" style="width:100%;min-height:46px"></select>
+      <div id="map" role="region" aria-label="Mappa della rotta"></div>
   </section>
 
   <section class="step" id="st3" aria-labelledby="h3t">
     <h2 class="sh" id="h3t"><span class="num">3</span>Si può fare?</h2>
-    <div id="verdict" class="vbox" aria-live="polite"><div class="sub">Carico il meteo…</div></div>
+    <div class="lbl" id="winlbl" style="margin-top:0">Quando partire</div>
+    <div class="win" id="win" role="group" aria-label="Orario di partenza"></div>
+    <div class="legend"><span><i style="background:var(--go)"></i>nei limiti</span><span><i style="background:var(--warn)"></i>attenzione</span><span><i style="background:var(--nogo)"></i>no</span><span id="winbest"></span></div>
+    <label class="lbl" for="alt" style="display:block">Quota</label><select id="alt" style="width:100%;min-height:46px"></select>
+    <div id="verdict" class="vbox" aria-live="polite" style="margin-top:14px"><div class="sub">Carico il meteo…</div></div>
   </section>
-
-  <div id="map" role="region" aria-label="Mappa della rotta"></div>
 
   <details class="sec" id="d_log"><summary>🧭 Log di navigazione</summary><div class="in"><div id="navres"></div></div></details>
   <details class="sec" id="d_prof"><summary>⛰️ Profilo verticale</summary><div class="in"><div id="profile"></div></div></details>
@@ -1353,7 +1356,7 @@ function searchInit(){
   document.addEventListener("click",e=>{if(!e.target.closest(".search"))$("qres").innerHTML=""});
 }
 function baseInit(){
-  document.querySelectorAll(".chbase").forEach(a=>a.onclick=e=>{e.preventDefault();const b=$("basebox");b.hidden=false;$("st1").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>$("b_q").focus(),300)});
+  document.querySelectorAll(".chbase").forEach(a=>a.onclick=e=>{e.preventDefault();const b=$("basebox");b.hidden=false;$("st2").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>$("b_q").focus(),300)});
   $("b_q").oninput=()=>{const q=$("b_q").value.trim(); if(q.length<2){$("b_res").innerHTML="";return}
     const list=apSearch(q);
     $("b_res").innerHTML=list.length?list.map(a=>`<button data-c="${a.c}">✈️ <b>${a.c}</b> ${esc(a.n)} · ${esc(a.m||"")}<span class="badge">${TYP[a.t]}</span></button>`).join(""):`<div class="sub" style="padding:10px 4px">Nessun campo trovato.</div>`;
