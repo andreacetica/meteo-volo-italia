@@ -29,6 +29,8 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 - Cerca aeroporti e aviosuperfici per codice, nome o comune, oppure paesi.
 - **Log di navigazione** per ogni tratta: rotta vera, distanza, vento in quota all'ora di passaggio, correzione di deriva, prua vera e magnetica, velocità al suolo, tempi, orari, carburante.
 - Schede degli aeroporti in rotta con **vento previsto all'arrivo** e pista consigliata.
+- **Profilo verticale** della rotta: terreno, quota di crociera, base nubi stimata e margine minimo sul terreno.
+- **Windy** integrato (widget ufficiale) centrato sulla rotta: vento, raffiche, nuvole, pioggia, temperatura, pressione.
 - Mappa topografica o satellite, livello **spazi aerei openAIP** (serve una chiave gratuita) ed esportazione della rotta in **GPX**.
 
 ## Come si usa
@@ -44,6 +46,8 @@ Le impostazioni (campo base, limiti, velocità, consumo, chiave openAIP) restano
 | Aeroporti, piste, frequenze | [OurAirports](https://ourairports.com) | pubblico dominio |
 | METAR e TAF | [aviationweather.gov](https://aviationweather.gov) | pubblico dominio |
 | Spazi aerei (facoltativo) | [openAIP](https://www.openaip.net) | con la chiave dell'utente |
+| Quote del terreno | [Open-Meteo Elevation](https://open-meteo.com) (Copernicus DEM) | CC BY 4.0 |
+| Mappa meteo animata | widget ufficiale di [Windy.com](https://www.windy.com) | termini Windy |
 | Mappe | Esri, OpenTopoMap | vedi i rispettivi termini |
 | Mappa interattiva | [Leaflet](https://leafletjs.com) | BSD-2 |
 

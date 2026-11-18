@@ -83,6 +83,7 @@
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr)}}
   .grid4 .v{font-size:20px}
+  #profile svg{width:100%;height:auto;display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px}
   .note{color:var(--mute);font-size:12px;margin-top:22px}
   .err{color:var(--nogo)}
 </style>
@@ -141,7 +142,13 @@
   </div>
   <div id="map"></div>
   <div id="navres" style="margin-top:12px"></div>
+  <div id="profile" style="margin-top:12px"></div>
   <div id="destinfo" style="margin-top:12px"></div>
+
+  <h2>🌬️ Windy sulla zona</h2>
+  <div class="navsearch" id="wy_btns"></div>
+  <div style="margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--line)"><iframe id="windy" title="Windy" style="width:100%;height:420px;border:0" loading="lazy"></iframe></div>
+  <p class="sub">Mappa interattiva di <a href="https://www.windy.com" target="_blank" rel="noopener">Windy.com</a> (widget ufficiale), centrata sulla rotta o sul campo base.</p>
 
   <h2>Il campo base</h2>
   <div id="homecard"></div>
@@ -424,6 +431,69 @@ function initSettings(){
 
 
 // ================= NAVIGAZIONE =================
+
+// ---- profilo verticale
+const ALTFT={"950":1500,"925":2500,"900":3300,"850":5000};
+async function elevations(pts){
+  const out=[];
+  for(let i=0;i<pts.length;i+=100){
+    const ch=pts.slice(i,i+100);
+    const u=`https://api.open-meteo.com/v1/elevation?latitude=${ch.map(p=>p[0].toFixed(4)).join(",")}&longitude=${ch.map(p=>p[1].toFixed(4)).join(",")}`;
+    const r_=await fetch(u); if(!r_.ok)throw new Error(r_.status);
+    out.push(...(await r_.json()).elevation);
+  }
+  return out;
+}
+async function drawProfile(P,legs,lvl,cloud){
+  const box=$("profile");
+  const tot=legs.reduce((a,L)=>a+L.g.dist,0); if(!tot){box.innerHTML="";return}
+  const N=Math.min(160,Math.max(40,Math.round(tot*3))), samp=[], marks=[0];
+  let acc=0;
+  legs.forEach(L=>{acc+=L.g.dist;marks.push(acc)});
+  for(let k=0;k<=N;k++){
+    const d=tot*k/N; let li=0; while(li<legs.length-1&&d>marks[li+1])li++;
+    const L=legs[li], f=(d-marks[li])/(L.g.dist||1);
+    samp.push([L.A.lat+(L.B.lat-L.A.lat)*f, L.A.lon+(L.B.lon-L.A.lon)*f, d, li]);
+  }
+  let el;
+  try{el=(await elevations(samp)).map(m=>m*3.281)}catch(e){box.innerHTML=`<div class="card sub">Profilo del terreno non disponibile (${e.message}).</div>`;return}
+  const cruise=ALTFT[lvl], maxT=Math.max(...el), top=Math.max(cruise,maxT,...cloud.filter(x=>x!=null))*1.15+300;
+  const W=900,H=260,pl=48,pr=12,pt=14,pb=28, X=d=>pl+(W-pl-pr)*d/tot, Y=a=>H-pb-(H-pt-pb)*a/top;
+  const terr=`M${X(0)},${Y(0)} `+samp.map((p,k)=>`L${X(p[2]).toFixed(1)},${Y(el[k]).toFixed(1)}`).join(" ")+` L${X(tot)},${Y(0)} Z`;
+  const clear=Math.min(...el.map(e=>cruise-e)), worst=samp[el.indexOf(maxT)];
+  let grid="";
+  for(let a=0;a<=top;a+=top>6000?2000:1000)grid+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(a)}" y2="${Y(a)}" stroke="#2a3440"/><text x="${pl-6}" y="${Y(a)+4}" fill="#8b98a5" font-size="11" text-anchor="end">${a}</text>`;
+  const cl=legs.map((L,i)=>cloud[i]==null?"":`<line x1="${X(marks[i])}" x2="${X(marks[i+1])}" y1="${Y(cloud[i])}" y2="${Y(cloud[i])}" stroke="#8b98a5" stroke-width="3" stroke-dasharray="8 5"/>`).join("");
+  const wps=P.map((p,i)=>`<line x1="${X(marks[i])}" x2="${X(marks[i])}" y1="${pt}" y2="${H-pb}" stroke="#58a6ff" stroke-opacity=".35"/><text x="${X(marks[i])+(i===P.length-1?-4:4)}" y="${H-pb+16}" fill="#e6edf3" font-size="11" text-anchor="${i===P.length-1?"end":"start"}">${(p.ap||p.name).slice(0,14)}</text>`).join("");
+  box.innerHTML=`<h2 style="margin-top:6px">Profilo verticale</h2>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profilo verticale della rotta">
+    ${grid}<path d="${terr}" fill="#6b4f2a" fill-opacity=".75" stroke="#a0784a"/>
+    ${cl}
+    <line x1="${pl}" x2="${W-pr}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="3"/>
+    <text x="${W-pr-4}" y="${Y(cruise)-6}" fill="#d6336c" font-size="12" text-anchor="end">crociera ~${cruise} ft</text>
+    ${wps}
+  </svg>
+  <div class="grid" style="margin-top:8px">
+    <div class="card"><div class="k">Terreno più alto sulla rotta</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(worst[2],1)} NM dalla partenza</div></div>
+    <div class="card" style="${clear<1000?"border-color:var(--nogo)":""}"><div class="k">Margine minimo sul terreno</div><div class="v" style="${clear<1000?"color:var(--nogo)":""}">${r(clear)} ft</div><div class="s">tra quota di crociera e terreno · ostacoli esclusi</div></div>
+    <div class="card"><div class="k">Base nubi stimata (tratteggio)</div><div class="v">${cloud.some(x=>x!=null)?r(Math.min(...cloud.filter(x=>x!=null)))+" ft":"–"}</div><div class="s">la più bassa sulla rotta, sul livello del mare</div></div>
+  </div>
+  <p class="sub">Terreno da modello di elevazione (Open-Meteo, griglia ~90 m): non comprende edifici, tralicci, antenne e cavi. Quote in ft sul livello del mare, quota di crociera approssimata dal livello di pressione.</p>`;
+}
+
+// ---- Windy
+const WY=[["wind","Vento"],["gust","Raffiche"],["clouds","Nuvole"],["rain","Pioggia"],["temp","Temperatura"],["pressure","Pressione"]];
+let wyOv="wind";
+function windyUpdate(){
+  const P=pts(), la=P.reduce((a,p)=>a+p.lat,0)/P.length, lo=P.reduce((a,p)=>a+p.lon,0)/P.length;
+  const span=Math.max(...P.map(p=>Math.abs(p.lat-la)),...P.map(p=>Math.abs(p.lon-lo)));
+  const z=span>1.2?7:span>0.5?8:9;
+  const u=`https://embed.windy.com/embed2.html?lat=${la.toFixed(3)}&lon=${lo.toFixed(3)}&detailLat=${LAT.toFixed(3)}&detailLon=${LON.toFixed(3)}&zoom=${z}&level=surface&overlay=${wyOv}&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=kt&metricTemp=%C2%B0C&radarRange=-1`;
+  if($("windy").src!==u)$("windy").src=u;
+  $("wy_btns").innerHTML=WY.map(([k,t])=>`<button class="${k===wyOv?"on":""}" data-o="${k}">${t}</button>`).join("");
+  $("wy_btns").querySelectorAll("button").forEach(b=>b.onclick=()=>{wyOv=b.dataset.o;windyUpdate()});
+}
+
 // ---- archivio aeroporti
 const SURF=x=>{const u=(x||"").toUpperCase();if(/ASP|ASF|BIT|PEM|PAV/.test(u))return"asfalto";if(/GR|TURF|ERBA|GRASS/.test(u))return"erba";if(/CON/.test(u))return"cemento";if(/GRAV|GHIA/.test(u))return"ghiaia";if(/DIRT|TERR|SAND/.test(u))return"terra";return x||"–"};
 const TYP={s:"aviosuperficie / campo",m:"aeroporto",l:"aeroporto principale"};
@@ -517,7 +587,7 @@ async function navCalc(){
   const nk=$("n_oaip").value.trim(), kchg=nk!==(NS.oaip||""); NS.oaip=nk; navSave(NS); if(kchg&&NAV.setAip)NAV.setAip();
   drawMap();
   const P=pts();
-  if(P.length<2){$("destinfo").innerHTML="";out.innerHTML=`<div class="card sub">Nessuna rotta: tocca la mappa per aggiungere il primo punto, oppure scegli un aeroporto dall'elenco.</div>`;return}
+  if(P.length<2){$("destinfo").innerHTML="";$("profile").innerHTML="";windyUpdate();out.innerHTML=`<div class="card sub">Nessuna rotta: tocca la mappa per aggiungere il primo punto, oppure scegli un aeroporto dall'elenco.</div>`;return}
   if(!DATA)return;
   const seq=++calcSeq, k=+$("n_hour").value, lvl=$("n_alt").value, tas=a.tas, v=parseFloat(NS.var);
   out.innerHTML=`<div class="card sub">Calcolo la rotta…</div>`;
@@ -532,7 +602,8 @@ async function navCalc(){
       const tr=triangle(g.tc,tas,wd,ws);
       if(!tr){out.innerHTML=`<div class="card err">Tratta ${n}: vento più forte della velocità dell'aereo, calcolo impossibile.</div>`;return}
       const h=g.dist/tr.gs; tot.d+=g.dist; tot.h+=h; t=new Date(t.getTime()+h*3600e3);
-      legs.push({A,B,g,wd,ws,tr,h,arr:new Date(t)});
+      const sp=W.hourly.temperature_2m[i]-W.hourly.dew_point_2m[i], low=W.hourly.cloud_cover_low[i];
+      legs.push({A,B,g,wd,ws,tr,h,arr:new Date(t),cloud:low>=30?null:null,cb:(low>=30&&sp!=null)?Math.max(0,sp*400):null,mid});
     }
     const last=P[P.length-1], Wd=await wxAt(last.lat,last.lon); if(seq!==calcSeq)return;
     const H=Wd.hourly, ak=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
@@ -570,6 +641,10 @@ async function navCalc(){
       let q=W.hourly.time.indexOf(kk); if(q<0)q=0;
       cards+=airportCard(ap,W.hourly.wind_direction_10m[q],W.hourly.wind_speed_10m[q],W.hourly.wind_gusts_10m[q],`all'arrivo (~${clk(t2)}): ${n3(W.hourly.wind_direction_10m[q])}°/${r(W.hourly.wind_speed_10m[q])} kt`);
     }
+    // profilo: base nubi = stima AGL + quota terreno a metà tratta
+    (async()=>{try{const me=(await elevations(legs.map(L=>[L.mid.lat,L.mid.lon]))).map(m=>m*3.281); if(seq!==calcSeq)return;
+      await drawProfile(P,legs,lvl,legs.map((L,n)=>L.cb==null?null:L.cb+me[n]));}catch(e){$("profile").innerHTML=`<div class="card sub">Profilo non disponibile (${e.message}).</div>`}})();
+    windyUpdate();
     $("destinfo").innerHTML=cards?`<h2>Aeroporti in rotta</h2>${cards}<p class="sub">Dati dall'archivio pubblico OurAirports, compilato da volontari: possono essere incompleti o non aggiornati (se trovi un errore, segnalalo sul progetto GitHub). Orari, PPR, pendenza delle piste e circuiti non sono in archivio: verificali sempre con il gestore, sulla carta e nell'AIP prima di partire.</p>`:"";
   }catch(e){out.innerHTML=`<div class="card err">Non riesco a scaricare il meteo per la rotta (${e.message}).</div>`}
 }
