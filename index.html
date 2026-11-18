@@ -479,14 +479,15 @@ function wxEval(H,i,rws){
   if([45,48].includes(code))issues.push("nebbia prevista");
   if([56,57,66,67].includes(code))issues.push("precipitazioni gelate");
   if(cape!=null&&cape>1000)warns.push(`atmosfera instabile (CAPE ${r(cape)} J/kg)`);
-  return {lv:issues.length?"nogo":warns.length?"warn":"go",issues,warns,w,g,wd,xw,best,base,low,vis,pop,code};
+  mmNotes(H,i,warns);
+  return {lv:issues.length?"nogo":warns.length?"warn":"go",issues,warns,w,g,wd,xw,best,base,low,vis,pop,code,mm:mmDetail(H,i)};
 }
 function wxShort(e){return `vento ${n3c(e.wd)}° ${r(e.w)} kt, raffiche ${r(e.g)}${e.xw!=null?` · traverso ${r(e.xw)} kt`:""}`}
 function wxLong(e){
   return `${WC[e.code]||"–"} · vento ${n3c(e.wd)}° ${r(e.w)} kt, raffiche ${r(e.g)} kt${e.xw!=null?` · traverso ${r(e.xw)} kt sulla pista ${rwyName(e.best.hdg)}`:" · traverso non calcolato: piste non in archivio"} · nubi basse ${r(e.low)}%${e.low>=30?`, base stimata ~${rr(e.base)} ft dal suolo`:""} · visibilità ${r(e.vis,1)} km · pioggia ${r(e.pop)}%`;
 }
 function fieldRow(e,title,nm,note){
-  return {lv:e.lv,nm,title,text:e.lv==="go"?wxShort(e):[...e.issues,...e.warns].join(" · "),detail:`<div>${wxLong(e)}</div>${note?`<div class="sub" style="margin-top:4px">${note}</div>`:""}`};
+  return {lv:e.lv,nm,title,text:e.lv==="go"?wxShort(e):[...e.issues,...e.warns].join(" · "),detail:`<div>${wxLong(e)}</div>${e.mm||""}${note?`<div class="sub" style="margin-top:4px">${note}</div>`:""}`};
 }
 // meteo lungo una tratta (a metà tratta, all'ora in cui ci passi)
 function legEval(W,i,elMid,lvl,ceilAGL,cruise){
@@ -505,6 +506,7 @@ function legEval(W,i,elMid,lvl,ceilAGL,cruise){
   if([45,48].includes(code))issues.push("nebbia prevista");
   if([56,57,66,67].includes(code))issues.push("precipitazioni gelate");
   if(cape!=null&&cape>1000)warns.push(`atmosfera instabile (CAPE ${r(cape)} J/kg)`);
+  mmNotes(W,i,warns);
   return {lv:issues.length?"nogo":warns.length?"warn":"go",issues,warns,vis,base,low,pop,code,cloudAmsl:low>=30&&elMid!=null?base+elMid:null};
 }
 function altMode(){return LIC[S.lic].ceiling?"agl":(ALTFT[NS.alt]?NS.alt:"925")}
@@ -531,11 +533,53 @@ async function cjson(u,ttlMin){
   if(c){STALE=Math.min(STALE||c.t,c.t);return c.d}
   throw err||new Error("429");
 }
+// ---------- confronto tra modelli meteo: si usa il caso peggiore e si segnala il disaccordo ----------
+const MODELS=[["italia_meteo_arpae_icon_2i","ICON-2I (ItaliaMeteo)"],["ecmwf_ifs025","ECMWF"],["icon_seamless","ICON (DWD)"],["meteofrance_seamless","Météo-France"]];
+const MV=["wind_speed_10m","wind_gusts_10m","temperature_2m","dew_point_2m","cloud_cover_low","weather_code"];
+function modelsAt(lat,lon){
+  return cjson(`https://api.open-meteo.com/v1/forecast?latitude=${(+lat).toFixed(2)}&longitude=${(+lon).toFixed(2)}&hourly=${MV.join(",")}&models=${MODELS.map(m=>m[0]).join(",")}&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`,30);
+}
+function mergeModels(H,M){
+  const mh=M&&M.hourly; if(!mh||!mh.time)return H;
+  const ok=MODELS.filter(([id])=>Array.isArray(mh[`wind_gusts_10m_${id}`])&&mh[`wind_gusts_10m_${id}`].some(v=>v!=null));
+  if(ok.length<2)return H;
+  const tI={}; mh.time.forEach((t,j)=>tI[t]=j);
+  const out={...H,wind_speed_10m:[...H.wind_speed_10m],wind_gusts_10m:[...H.wind_gusts_10m],dew_point_2m:[...H.dew_point_2m],cloud_cover_low:[...H.cloud_cover_low],weather_code:[...H.weather_code],_mm:[],_models:ok.map(m=>m[1])};
+  H.time.forEach((t,i)=>{
+    const j=tI[t]; if(j==null){out._mm.push(null);return}
+    const per=ok.map(([id,name])=>({name,w:mh[`wind_speed_10m_${id}`][j],g:mh[`wind_gusts_10m_${id}`][j],t:mh[`temperature_2m_${id}`]?mh[`temperature_2m_${id}`][j]:null,d:mh[`dew_point_2m_${id}`]?mh[`dew_point_2m_${id}`][j]:null,l:mh[`cloud_cover_low_${id}`]?mh[`cloud_cover_low_${id}`][j]:null,c:mh[`weather_code_${id}`]?mh[`weather_code_${id}`][j]:null})).filter(x=>x.g!=null&&x.w!=null);
+    if(per.length<2){out._mm.push(null);return}
+    const gs=per.map(x=>x.g).concat(H.wind_gusts_10m[i]??[]), ws=per.map(x=>x.w).concat(H.wind_speed_10m[i]??[]);
+    const bs=per.filter(x=>x.t!=null&&x.d!=null).map(x=>Math.max(0,(x.t-x.d)*400)), ls=per.map(x=>x.l).filter(v=>v!=null);
+    const storm=per.filter(x=>[95,96,99].includes(x.c)).length, fog=per.filter(x=>[45,48].includes(x.c)).length;
+    const hi=a=>{const s=[...a].sort((x,y)=>y-x);return s.length>=3?s[1]:s[0]}, lo=a=>{const s=[...a].sort((x,y)=>x-y);return s.length>=3?s[1]:s[0]};
+    const gU=hi(gs); out.wind_gusts_10m[i]=gU; out.wind_speed_10m[i]=hi(ws);
+    if(bs.length){bs.push(Math.max(0,(H.temperature_2m[i]-H.dew_point_2m[i])*400));out.dew_point_2m[i]=H.temperature_2m[i]-lo(bs)/400}
+    if(ls.length){ls.push(H.cloud_cover_low[i]??0);out.cloud_cover_low[i]=hi(ls)}
+    if(storm>=2&&![95,96,99].includes(out.weather_code[i]))out.weather_code[i]=95;
+    else if(fog>=2&&![45,48,95,96,99].includes(out.weather_code[i]))out.weather_code[i]=45;
+    out._mm.push({n:per.length,gU,gMin:Math.min(...gs),gMax:Math.max(...gs),bMin:bs.length?Math.min(...bs):null,bMax:bs.length?Math.max(...bs):null,low:ls.length?Math.max(...ls):0,storm,fog,per});
+  });
+  return out;
+}
+function mmNotes(H,i,warns){
+  const m=H._mm&&H._mm[i]; if(!m)return;
+  if(m.gMax-m.gU>=5)warns.push(`un modello prevede raffiche fino a ${r(m.gMax)} kt (gli altri ${r(m.gMin)}–${r(m.gU)})`);
+  else if(m.gMax-m.gMin>=10)warns.push(`modelli in disaccordo sulle raffiche: da ${r(m.gMin)} a ${r(m.gMax)} kt`);
+  if(m.storm===1)warns.push(`un modello su ${m.n} prevede temporali`);
+  if(m.fog===1)warns.push(`un modello su ${m.n} prevede nebbia`);
+  if(m.low>=50&&m.bMin!=null&&m.bMax-m.bMin>=1500)warns.push(`modelli in disaccordo sulla base nubi: da ~${rr(m.bMin)} a ~${rr(m.bMax)} ft`);
+}
+function mmDetail(H,i){
+  const m=H._mm&&H._mm[i]; if(!m)return "";
+  return `<div class="sub" style="margin-top:6px">Valori confermati da almeno due modelli su ${m.n}. ${m.per.map(x=>`${x.name}: vento ${r(x.w)} kt, raffiche ${r(x.g)} kt${x.t!=null&&x.d!=null&&x.l!=null&&x.l>=30?`, base ~${rr(Math.max(0,(x.t-x.d)*400))} ft`:""}`).join(" · ")}</div>`;
+}
 async function loadWeather(){
   const vars=["temperature_2m","dew_point_2m","relative_humidity_2m","precipitation","precipitation_probability","weather_code","pressure_msl","cloud_cover_low","cloud_cover_mid","cloud_cover_high","visibility","wind_speed_10m","wind_direction_10m","wind_gusts_10m","wind_speed_80m","wind_direction_80m","wind_speed_925hPa","wind_direction_925hPa","wind_speed_850hPa","wind_direction_850hPa","freezing_level_height","cape","is_day"];
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=${vars.join(",")}&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`;
   try{
     STALE=null; DATA=await cjson(url,15);
+    try{DATA={...DATA,hourly:mergeModels(DATA.hourly,await modelsAt(LAT,LON))}}catch(e){} // senza confronto se non disponibile
     const t=STALE||(MEM[url]&&MEM[url].t)||Date.now();
     $("updated").innerHTML=STALE?`<span style="color:var(--warn)">servizio meteo saturo, dati delle ${clk(new Date(t))}</span>`:`meteo delle ${clk(new Date(t))}`;
     if(STALE)setTimeout(loadWeather,90e3);
@@ -555,7 +599,7 @@ async function wxAt(lat,lon){
   const v=["wind_speed_10m","wind_direction_10m","wind_gusts_10m","wind_speed_120m","wind_direction_120m","cloud_cover_low","visibility","weather_code","temperature_2m","dew_point_2m","precipitation_probability","cape","is_day"];
   ["975","950","925","900","850"].forEach(l=>v.push(`wind_speed_${l}hPa`,`wind_direction_${l}hPa`));
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&hourly=${v.join(",")}&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`;
-  NAV.wx[key]={t:Date.now(),p:cjson(u,30)};
+  NAV.wx[key]={t:Date.now(),p:Promise.all([cjson(u,30),modelsAt(lat,lon).catch(()=>null)]).then(([W,M])=>M?{...W,hourly:mergeModels(W.hourly,M)}:W)};
   try{return await NAV.wx[key].p}catch(e){delete NAV.wx[key];throw e}
 }
 async function elevations(p){
@@ -995,7 +1039,7 @@ function renderVerdict(fl){
   box.className="vbox "+fl.lv;
   box.innerHTML=`<div class="vt"><span class="dot"></span>${title}</div><div class="vs">${sum}</div>
     <ol class="checks">${rows.map(x=>`<li class="ck ${x.lv}" data-i="${x.i}" tabindex="0" role="button" aria-expanded="false"><span class="ic" aria-hidden="true">${ICON[x.lv]}</span><div class="ct"><div class="tt">${esc(x.title)}${x.badge?`<span class="badge">${esc(x.badge)}</span>`:""}</div><div class="tx">${esc(x.text)}</div>${x.detail?`<div class="more" hidden>${x.detail}</div>`:""}</div></li>`).join("")}</ol>
-    <div class="vfoot">Tocca una riga per i dettagli. Stima da modelli meteo e dati non ufficiali: la decisione resta tua, con le fonti ufficiali. · <a href="#" id="b_print">🖨️ Stampa il piano o salvalo in PDF</a></div>`;
+    <div class="vfoot">${DATA.hourly._models?`Meteo confrontato tra ${DATA.hourly._models.length} modelli (${DATA.hourly._models.join(", ")}): conta il valore peggiore confermato da almeno due. `:""}Tocca una riga per i dettagli. Stima da modelli meteo e dati non ufficiali: la decisione resta tua, con le fonti ufficiali. · <a href="#" id="b_print">🖨️ Stampa il piano o salvalo in PDF</a></div>`;
   $("b_print").onclick=e=>{e.preventDefault();printPlan()};
   box.querySelectorAll(".ck").forEach(li=>{
     const go=ev=>{if(ev.target.closest("a"))return;const x=fl.rows[+li.dataset.i],m=li.querySelector(".more");

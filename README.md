@@ -24,6 +24,7 @@ Per piloti VDS e PPL. Gratuito, open source, senza registrazione. Funziona nel b
 **③ Si può fare?**
 - Un **semaforo unico per tutto il volo**, con una riga per ogni controllo **nell'ordine in cui lo incontri**: partenza, zone attraversate (con miglia e minuti dalla partenza), meteo lungo la rotta, aeroporti entro 5 km (VDS basico), arrivo, luce del giorno.
 - Tocchi una riga e si apre la spiegazione: per le zone, cos'è, i limiti di quota in parole semplici, dove sei tu rispetto alla zona e dove verificarla sull'AIP. La zona si evidenzia sulla mappa.
+- **Meteo confrontato tra 4 modelli** (ICON-2I di ItaliaMeteo, ECMWF, ICON di DWD, Météo-France): conta il valore peggiore confermato da almeno due modelli, e se un modello prevede qualcosa di molto diverso (raffiche, temporali, nebbia, base nubi) compare un avviso.
 - Tiene conto dei **tuoi limiti personali** per ogni velivolo e dell'**esperienza recente** (limiti ridotti se non voli da tempo).
 
 **E poi**
