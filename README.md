@@ -12,8 +12,8 @@ Per piloti VDS e PPL. Gratuito, open source, senza registrazione. Funziona nel b
 ## Come funziona
 
 **① Dove vai**
-- **Giro locale** attorno al tuo campo (30 minuti, 1 ora o 2 ore), oppure **verso un campo**.
-- Cerca la destinazione tra **660 aeroporti e aviosuperfici italiani**, o un paese. Aggiungi tappe dalla ricerca o toccando la mappa, e spunta **ritorno** per l'andata e ritorno.
+- Scrivi il nome o il codice del campo e scegli dal menu a tendina, oppure tocca la mappa: il primo punto è la destinazione, i successivi diventano tappe. Spunta **ritorno** per l'andata e ritorno.
+- Senza destinazione è un **giro attorno al tuo campo** (30 minuti, 1 ora o 2 ore).
 
 **② Con cosa e quando**
 - **Velivolo** (Tecnam P92, Cessna 172) e **titolo** legato al velivolo: VDS basico o avanzato per l'apparecchio VDS, LAPL(A) o PPL(A) per il velivolo certificato.
