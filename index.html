@@ -347,6 +347,13 @@ function fillHeader(){
   document.title=`Meteo Volo Italia · ${HOMEAP.c}`;
   $("l_windy").href=`https://www.windy.com/${LAT.toFixed(3)}/${LON.toFixed(3)}?${LAT.toFixed(3)},${LON.toFixed(3)},10`;
 }
+function renderSel(){
+  licFix();
+  $("license").innerHTML=(AC_LIC[S.ac]||Object.keys(LIC)).map(l=>`<button class="${l===S.lic?"on":""}" data-l="${l}">${l}</button>`).join("");
+  $("license").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.lic=b.dataset.l;S.licAc[S.ac]=S.lic;save();DATA?render():renderSel()});
+  $("aircraft").innerHTML=AIRCRAFT.map(a=>`<button class="${a===S.ac?"on":""}" data-a="${a}">${a}</button>`).join("");
+  $("aircraft").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.ac=b.dataset.a;S.lic="";licFix();LM=S.prof[S.ac];save();initSettings();navInit();DATA?render():renderSel()});
+}
 function render(){
   const h=DATA.hourly, dly=DATA.daily;
   // day buttons
@@ -357,9 +364,7 @@ function render(){
   }).join("");
   $("days").querySelectorAll("button").forEach(b=>b.onclick=()=>{dayIdx=+b.dataset.d;selHour=null;selManual=dayIdx!==0;render()});
 
-  licFix();
-  $("license").innerHTML=(AC_LIC[S.ac]||Object.keys(LIC)).map(l=>`<button class="${l===S.lic?"on":""}" data-l="${l}">${l}</button>`).join("");
-  $("license").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.lic=b.dataset.l;S.licAc[S.ac]=S.lic;save();render()});
+  renderSel();
   {const rc=recency(), dstr=DATA.daily.time[dayIdx], lic=LIC[S.lic];
    const bits=[`<b>${S.lic}</b>${S.bip&&!lic.vfr?" con biposto":""}`];
    if(lic.vfr)bits.push("spazi controllati e ATZ: con contatto radio e autorizzazione");
@@ -368,8 +373,6 @@ function render(){
    bits.push("solo dall'alba al tramonto");
    if(rc.days!=null)bits.push(rc.active?`<span style="color:var(--warn)">⚠️ ultimo volo ${rc.days} giorni fa: limiti di vento ridotti del ${rc.p}%</span>`:`ultimo volo ${rc.days} giorni fa`);
    $("pilotbar").innerHTML=`🧑‍✈️ ${bits.join(" · ")} <span title="${lic.note}" style="cursor:help">ⓘ</span>`;}
-  $("aircraft").innerHTML=AIRCRAFT.map(a=>`<button class="${a===S.ac?"on":""}" data-a="${a}">${a}</button>`).join("");
-  $("aircraft").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.ac=b.dataset.a;S.lic="";licFix();LM=S.prof[S.ac];save();initSettings();navInit();render()});
 
   const hrs=dayHours(dayIdx);
   if(selHour==null||!hrs.includes(selHour)||(dayIdx===0&&!selManual)){
@@ -458,17 +461,41 @@ function render(){
   $("hourly").querySelectorAll("tr[data-k]").forEach(tr=>tr.onclick=()=>{selHour=+tr.dataset.k;selManual=true;render();window.scrollTo({top:0,behavior:"smooth"})});
 }
 
+// ---- Cache delle richieste: meno chiamate a Open-Meteo, e dati ancora visibili se il servizio è saturo
+const CPRE="mvc:", MEM={}; let STALE=null;
+function cGet(u){try{return JSON.parse(localStorage.getItem(CPRE+u))}catch(e){return null}}
+function cPut(u,o){const v=JSON.stringify(o);try{localStorage.setItem(CPRE+u,v)}catch(e){try{Object.keys(localStorage).filter(k=>k.startsWith(CPRE)).forEach(k=>localStorage.removeItem(k));localStorage.setItem(CPRE+u,v)}catch(e2){}}}
+try{Object.keys(localStorage).filter(k=>k.startsWith(CPRE)).forEach(k=>{const o=cGet(k.slice(CPRE.length));if(!o||Date.now()-o.t>3*864e5)localStorage.removeItem(k)})}catch(e){}
+async function cjson(u,ttlMin){
+  const c=MEM[u]||cGet(u);
+  if(c&&(ttlMin==null||Date.now()-c.t<ttlMin*60e3)){MEM[u]=c;return c.d}
+  let err;
+  for(let k=0;k<2;k++){
+    try{
+      const r=await fetch(u);
+      if(r.status===429&&k===0){await new Promise(z=>setTimeout(z,4000));continue}
+      if(!r.ok)throw new Error(r.status);
+      const o={t:Date.now(),d:await r.json()}; MEM[u]=o; cPut(u,o); return o.d;
+    }catch(e){err=e;break}
+  }
+  if(c){STALE=Math.min(STALE||c.t,c.t);return c.d}
+  throw err||new Error("429");
+}
+
 async function loadWeather(){
   const vars=["temperature_2m","dew_point_2m","relative_humidity_2m","precipitation","precipitation_probability","weather_code","pressure_msl","cloud_cover_low","cloud_cover_mid","cloud_cover_high","visibility","wind_speed_10m","wind_direction_10m","wind_gusts_10m","wind_speed_80m","wind_direction_80m","wind_speed_925hPa","wind_direction_925hPa","wind_speed_850hPa","wind_direction_850hPa","freezing_level_height","cape","is_day"];
   const url=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&hourly=${vars.join(",")}&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`;
   try{
-    const res=await fetch(url); if(!res.ok)throw new Error(res.status);
-    DATA=await res.json();
-    $("updated").textContent="aggiornato "+new Date().toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+    STALE=null; DATA=await cjson(url,15);
+    const t=STALE||(MEM[url]&&MEM[url].t)||Date.now();
+    $("updated").innerHTML=(STALE?'<span style="color:var(--warn)">⚠️ servizio meteo saturo, dati delle ':"aggiornato ")+new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+(STALE?"</span>":"");
+    if(STALE)setTimeout(loadWeather,90e3);
     render();
   }catch(e){
     $("verdict").className="verdict nogo";
-    $("verdict").innerHTML=`<span class="dot"></span><div class="err">Non riesco a scaricare le previsioni (${e.message}). Controlla la connessione e ricarica la pagina.</div>`;
+    renderSel();
+    $("verdict").innerHTML=e.message==="429"?`<span class="dot"></span><div class="err">Il servizio meteo gratuito (Open-Meteo) ha ricevuto troppe richieste da questa rete. Riprovo da solo fra un minuto e mezzo: non serve ricaricare.</div>`:`<span class="dot"></span><div class="err">Non riesco a scaricare le previsioni (${e.message}). Controlla la connessione e ricarica la pagina.</div>`;
+    setTimeout(loadWeather,90e3);
   }
 }
 
@@ -513,8 +540,7 @@ async function elevations(pts){
   for(let i=0;i<pts.length;i+=100){
     const ch=pts.slice(i,i+100);
     const u=`https://api.open-meteo.com/v1/elevation?latitude=${ch.map(p=>p[0].toFixed(4)).join(",")}&longitude=${ch.map(p=>p[1].toFixed(4)).join(",")}`;
-    const r_=await fetch(u); if(!r_.ok)throw new Error(r_.status);
-    out.push(...(await r_.json()).elevation);
+    out.push(...(await cjson(u,null)).elevation); // il terreno non cambia: resta in memoria
   }
   return out;
 }
@@ -735,7 +761,7 @@ async function wxAt(lat,lon){
   const v=["wind_speed_10m","wind_direction_10m","wind_gusts_10m","cloud_cover_low","visibility","weather_code","temperature_2m","dew_point_2m","precipitation_probability"];
   ["950","925","900","850"].forEach(l=>v.push(`wind_speed_${l}hPa`,`wind_direction_${l}hPa`));
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&hourly=${v.join(",")}&wind_speed_unit=kn&timezone=Europe%2FRome&forecast_days=3`;
-  NAV.wx[key]=fetch(u).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()});
+  NAV.wx[key]=cjson(u,30);
   try{return await NAV.wx[key]}catch(e){delete NAV.wx[key];throw e}
 }
 
