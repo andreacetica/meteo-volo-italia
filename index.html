@@ -335,6 +335,7 @@ function hourEval(i){
 }
 
 // Ora di previsione più vicina all'orario attuale (alle 19:40 è quella delle 20:00)
+function hourKey(d){const n=new Date(d.getTime()+30*60e3);return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:00`} // ora di previsione più vicina
 function nowKey(){const n=new Date(Date.now()+30*60e3);return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:00`}
 function dayHours(d){
   const t=DATA.hourly.time, date=DATA.daily.time[d], out=[];
@@ -772,8 +773,8 @@ async function wxAt(lat,lon){
 function navHours(){
   if(!DATA)return;
   const hrs=dayHours(dayIdx), cur=$("n_hour").value;
-  $("n_hour").innerHTML=hrs.map(k=>`<option value="${k}">${DATA.hourly.time[k].slice(11,16)}</option>`).join("");
-  $("n_hour").value=hrs.includes(+cur)?cur:String(selHour);
+  $("n_hour").innerHTML=hrs.map(k=>`<option value="${k}:0">${DATA.hourly.time[k].slice(11,16)}</option><option value="${k}:30">${DATA.hourly.time[k].slice(11,13)}:30</option>`).join("");
+  $("n_hour").value=hrs.includes(parseInt(cur))?cur:`${selHour}:0`;
 }
 
 function addPoint(p){NS.route.push(p);navSave(NS);navCalc()}
@@ -931,14 +932,14 @@ async function navCalc(){
   const P=pts();
   if(P.length<2){$("destinfo").innerHTML="";$("profile").innerHTML="";$("aspc").innerHTML="";$("aipchk").innerHTML="";if(NAV.aspl)NAV.aspl.clearLayers();windyUpdate();out.innerHTML=`<div class="card sub">Nessuna rotta: tocca la mappa per aggiungere il primo punto, oppure scegli un aeroporto dall'elenco.</div>`;return}
   if(!DATA)return;
-  const seq=++calcSeq, k=+$("n_hour").value, lvl=$("n_alt").value, tas=a.tas, v=parseFloat(NS.var);
+  const seq=++calcSeq, [k,depMin]=($("n_hour").value||"0:0").split(":").map(Number), lvl=$("n_alt").value, tas=a.tas, v=parseFloat(NS.var);
   out.innerHTML=`<div class="card sub">Calcolo la rotta…</div>`;
   try{
-    const legs=[]; let t=new Date(DATA.hourly.time[k]), tot={d:0,h:0};
+    const legs=[]; let t=new Date(new Date(DATA.hourly.time[k]).getTime()+depMin*60e3), tot={d:0,h:0}; const t0=new Date(t);
     for(let n=1;n<P.length;n++){
       const A=P[n-1],B=P[n], g=gc(A,B), mid={lat:(A.lat+B.lat)/2,lon:(A.lon+B.lon)/2};
       const W=await wxAt(mid.lat,mid.lon); if(seq!==calcSeq)return;
-      const hk=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+      const hk=hourKey(t);
       let i=W.hourly.time.indexOf(hk); if(i<0)i=W.hourly.time.indexOf(DATA.hourly.time[k]);
       const wd=W.hourly[`wind_direction_${lvl}hPa`][i], ws=W.hourly[`wind_speed_${lvl}hPa`][i];
       const tr=triangle(g.tc,tas,wd,ws);
@@ -948,7 +949,7 @@ async function navCalc(){
       legs.push({A,B,g,wd,ws,tr,h,arr:new Date(t),cloud:low>=30?null:null,cb:(low>=30&&sp!=null)?Math.max(0,sp*400):null,mid});
     }
     const last=P[P.length-1], Wd=await wxAt(last.lat,last.lon); if(seq!==calcSeq)return;
-    const H=Wd.hourly, ak=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+    const H=Wd.hourly, ak=hourKey(t);
     let j=H.time.indexOf(ak); if(j<0)j=H.time.indexOf(DATA.hourly.time[k]);
     const ss=DATA.daily.sunset[dayIdx].slice(11,16), ssd=new Date(DATA.daily.sunset[dayIdx]);
     const fuel=a.fuel*tot.h, late=t>ssd;
@@ -967,7 +968,7 @@ async function navCalc(){
     out.innerHTML=apWarn+`
     <div class="grid">
       <div class="card"><div class="k">Distanza totale</div><div class="v">${r(tot.d,1)} NM</div><div class="s">${r(tot.d*1.852,1)} km · ${legs.length} tratt${legs.length>1?"e":"a"}</div></div>
-      <div class="card"><div class="k">Tempo di volo</div><div class="v">${hm(tot.h)}</div><div class="s">partenza ${DATA.hourly.time[k].slice(11,16)} · arrivo ~${clk(t)}</div></div>
+      <div class="card"><div class="k">Tempo di volo</div><div class="v">${hm(tot.h)}</div><div class="s">partenza ${clk(t0)} · arrivo ~${clk(t)}</div></div>
       <div class="card"><div class="k">Carburante (senza riserva)</div><div class="v">${a.fuel?r(fuel,1)+" L":"–"}</div><div class="s">${a.fuel?`a ${a.fuel} L/h · aggiungi la riserva`:"inserisci il consumo"}</div></div>
       <div class="card" style="${late?"border-color:var(--nogo)":""}"><div class="k">Tramonto</div><div class="v">${ss}</div><div class="s">${late?"⛔ arrivo dopo il tramonto":"arrivo prima del tramonto"}</div></div>
     </div>
@@ -986,7 +987,7 @@ async function navCalc(){
     for(const ap of aps){
       const idx=P.findIndex(p=>p.ap===ap.c), leg=legs[idx-1], t2=leg?leg.arr:t;
       const W=await wxAt(ap.la,ap.lo); if(seq!==calcSeq)return;
-      const kk=`${t2.getFullYear()}-${pad(t2.getMonth()+1)}-${pad(t2.getDate())}T${pad(t2.getHours())}:00`;
+      const kk=hourKey(t2);
       let q=W.hourly.time.indexOf(kk); if(q<0)q=0;
       cards+=airportCard(ap,W.hourly.wind_direction_10m[q],W.hourly.wind_speed_10m[q],W.hourly.wind_gusts_10m[q],`all'arrivo (~${clk(t2)}): ${n3(W.hourly.wind_direction_10m[q])}°/${r(W.hourly.wind_speed_10m[q])} kt`);
     }
