@@ -796,6 +796,51 @@ async function aspFetch(b,key){
   }
   return ASPC[id]=all;
 }
+// ---- Spiegazione di una zona (si apre toccandola nell'elenco)
+const ASPDESC={
+  1:"Zona regolamentata (R): il volo è permesso solo alle condizioni indicate nell'AIP (orari, quote, autorizzazioni). Spesso è attiva solo in certi periodi.",
+  2:"Zona pericolosa (D): in certi periodi vi si svolgono attività pericolose per il volo, per esempio esercitazioni militari o tiri. Il volo non è vietato, ma va evitata quando è attiva.",
+  3:"Zona vietata (P): il volo è vietato, salvo le eccezioni scritte nell'AIP.",
+  4:"CTR (zona di controllo): spazio controllato attorno a un aeroporto, dal suolo in su. Per entrarci in VFR servono contatto radio e autorizzazione del controllo.",
+  5:"TMZ: zona in cui è obbligatorio il transponder acceso.",
+  6:"RMZ: zona in cui è obbligatorio il contatto radio.",
+  7:"TMA (area terminale): spazio controllato sopra e attorno agli aeroporti principali, da una certa quota in su.",
+  8:"TRA: spazio riservato temporaneamente ad attività particolari, di solito militari.",
+  9:"TSA: spazio separato temporaneamente per attività particolari, di solito militari.",
+  13:"ATZ (zona di traffico d'aerodromo): spazio attorno a un aeroporto per proteggere il traffico del campo. Si vola seguendo le regole e le comunicazioni radio di quel campo.",
+  14:"MATZ: zona di traffico di un aeroporto militare.",
+  19:"Area protetta: zona con limitazioni di sorvolo, per esempio per tutela ambientale.",
+  21:"Settore per il volo a vela: possibile attività di alianti.",
+  26:"CTA (area di controllo): spazio controllato che inizia da una certa quota, non dal suolo: sotto il limite inferiore non sei dentro.",
+  28:"Area di attività sportive o ricreative, per esempio paracadutismo o volo libero: possibile traffico non segnalato.",
+  29:"Limitazione al sorvolo a bassa quota: sotto una certa quota il sorvolo è limitato.",
+  36:"CTR militare: zona di controllo di un aeroporto militare."
+};
+function limWords(l){
+  if(!l)return"non indicato";
+  if(l.referenceDatum===0&&!+l.value)return"dal suolo (SFC)";
+  if(l.unit===6)return`livello di volo FL${l.value} (circa ${(+l.value*100).toLocaleString("it-IT")} ft con pressione standard)`;
+  const ft=Math.round(limFt(l)).toLocaleString("it-IT");
+  return l.referenceDatum===0?`${ft} ft dal suolo (AGL)`:`${ft} ft sul livello del mare (AMSL)`;
+}
+function zoneInfo(z,alt){
+  const a=z.a, lo=limFt(a.lowerLimit), up=limFt(a.upperLimit), loG=a.lowerLimit&&a.lowerLimit.referenceDatum===0;
+  let rel="";
+  if(!loG&&lo!=null&&alt===lo)rel=`La tua crociera (~${alt} ft) è proprio sul limite inferiore: scendi un po' per restarne fuori, oppure chiedi l'autorizzazione.`;
+  else if(up!=null&&a.upperLimit.referenceDatum!==0&&alt>up)rel=`La tua crociera (~${alt} ft) è sopra il limite superiore: ci passi sopra.`;
+  else rel=`Alla tua crociera (~${alt} ft) ci passi dentro.`;
+  const flags=[a.byNotam?"si attiva tramite NOTAM":"",a.onDemand?"attivabile su richiesta":"",a.onRequest?"attraversabile su richiesta":""].filter(Boolean);
+  const where=PRD.includes(a.type)||[8,9].includes(a.type)?"AIP ENR 5.1 (zone P, R e D) e NOTAM del giorno":[4,13,36,14].includes(a.type)?"AIP: scheda AD 2 dell'aeroporto (sezione spazi ATS) e NOTAM":[7,26].includes(a.type)?"AIP ENR 2.1 e NOTAM":"AIP ENR 5 e NOTAM";
+  return `<div style="margin-top:6px;font-size:14px;line-height:1.45">
+    <div>${ASPDESC[a.type]||"Zona aeronautica: verifica le condizioni sull'AIP."}</div>
+    <div style="margin-top:6px"><b>Da</b> ${limWords(a.lowerLimit)} <b>a</b> ${limWords(a.upperLimit)}.</div>
+    <div style="margin-top:4px">${rel}</div>
+    ${flags.length?`<div style="margin-top:4px">📌 Secondo openAIP: ${flags.join(", ")}.</div>`:""}
+    <div style="margin-top:6px">📘 Dove verificare: <b>${where}</b>. <a href="${EAIP}" target="_blank" rel="noopener">eAIP</a></div>
+    <div class="sub" style="margin-top:4px">I NOTAM non sono ancora nell'app: non esiste una fonte gratuita e aperta che li fornisca alle pagine web. Controllali su ENAV prima del volo.</div>
+  </div>`;
+}
+
 async function zoneCheck(legs,lvl,seq){
   const box=$("aspc"), key=(NS.oaip||"").trim(); ZONES=null;
   if(NAV.aspl)NAV.aspl.clearLayers();
@@ -836,12 +881,21 @@ async function zoneCheck(legs,lvl,seq){
     });
     list.sort((p,q)=>p.nm-q.nm); // nell'ordine in cui le incontri lungo la rotta
     ZONES=list;
-    if(NAV.aspl&&window.L)list.forEach(z=>window.L.geoJSON(z.a.geometry,{style:{color:z.lv==="nogo"?"#f85149":"#d29922",weight:2,fillOpacity:.12},interactive:false}).addTo(NAV.aspl));
+    if(NAV.aspl&&window.L)list.forEach(z=>{z.layer=window.L.geoJSON(z.a.geometry,{style:{color:z.lv==="nogo"?"#f85149":"#d29922",weight:2,fillOpacity:.12},interactive:false}).addTo(NAV.aspl)});
     const col=lv=>lv==="nogo"?"var(--nogo)":"var(--warn)";
     box.innerHTML=list.length?`<div class="card" style="border-color:${col(list.some(z=>z.lv==="nogo")?"nogo":"warn")}"><div class="k">${list.some(z=>z.lv==="nogo")?"⛔":"⚠️"} Zone attraversate dalla rotta, in ordine di percorso · ${S.lic}</div>
-      ${list.map(z=>`<div style="margin-top:8px;font-size:14px;border-left:3px solid ${col(z.lv)};padding-left:8px">${z.lv==="nogo"?"⛔":"⚠️"} <b>${z.a.name}</b> <span class="badge">${ASPT[z.a.type]}</span> <span class="sub">dopo ${r(z.nm,1)} NM (~${Math.round(z.min)} min) · tratta ${z.leg} · ${limTxt(z.a.lowerLimit)} – ${limTxt(z.a.upperLimit)}</span><br><span style="color:${col(z.lv)}">${z.why}</span></div>`).join("")}
+      ${list.map((z,zi)=>`<div class="zone" data-z="${zi}" style="margin-top:8px;font-size:14px;border-left:3px solid ${col(z.lv)};padding-left:8px;cursor:pointer">${z.lv==="nogo"?"⛔":"⚠️"} <b>${z.a.name}</b> <span class="sub">›</span> <span class="badge">${ASPT[z.a.type]}</span> <span class="sub">dopo ${r(z.nm,1)} NM (~${Math.round(z.min)} min) · tratta ${z.leg} · ${limTxt(z.a.lowerLimit)} – ${limTxt(z.a.upperLimit)}</span><br><span style="color:${col(z.lv)}">${z.why}</span><div class="zinfo" style="display:none"></div></div>`).join("")}
+      <div class="s" style="margin-top:8px">Tocca una zona per la spiegazione e per vederla sulla mappa.</div>
       <div class="s" style="margin-top:8px">Dati openAIP${window.OAIP?" del "+window.OAIP.date:""} (comunità, non ufficiali)${above?` · ${above>1?`altre ${above} zone`:"un'altra zona"} sopra ${alt} ft non mostrat${above>1?"e":"a"}`:""}. Fa fede l'AIP.</div></div>`
       :`<div class="card"><div class="k">✅ Nessuna zona trovata sulla rotta</div><div class="s">Secondo openAIP (non ufficiale)${above?`, a parte ${above>1?`${above} zone`:"una zona"} sopra ${alt} ft`:""}. Conferma comunque su AIP e NOTAM.</div></div>`;
+    box.querySelectorAll(".zone").forEach(el=>el.onclick=ev=>{
+      if(ev.target.closest("a"))return;
+      const z=list[+el.dataset.z], inf=el.querySelector(".zinfo"), open=inf.style.display==="none";
+      box.querySelectorAll(".zinfo").forEach(x=>x.style.display="none");
+      list.forEach(q=>q.layer&&q.layer.setStyle({weight:2,fillOpacity:.12}));
+      if(open){inf.innerHTML=zoneInfo(z,alt);inf.style.display="block";
+        if(z.layer&&NAV.map){z.layer.setStyle({weight:4,fillOpacity:.3});NAV.map.fitBounds(z.layer.getBounds(),{padding:[30,30]})}}
+    });
   }catch(e){ if(seq!==calcSeq)return; box.innerHTML=`<div class="card sub">⚠️ Avviso zone non disponibile: openAIP non risponde alle richieste dal browser (${e.message}). Si attiverà quando l'app sarà su GitHub con i dati openAIP inclusi. Intanto controlla le zone sulla mappa e su AIP.</div>`}
   aipList(legs);
 }

@@ -44,6 +44,7 @@ def main():
         sys.exit("Dati openAIP inattesi: file non aggiornato.")
     A = [{"_id": a.get("_id"), "name": a.get("name"), "type": a.get("type"), "icaoClass": a.get("icaoClass"),
           "lowerLimit": lim(a.get("lowerLimit")), "upperLimit": lim(a.get("upperLimit")),
+          "byNotam": a.get("byNotam"), "onDemand": a.get("onDemand"), "onRequest": a.get("onRequest"),
           "geometry": {"type": a["geometry"]["type"], "coordinates": rnd(a["geometry"]["coordinates"])}}
          for a in asp if a.get("geometry")]
     P = []
