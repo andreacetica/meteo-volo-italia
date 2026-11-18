@@ -575,21 +575,24 @@ async function drawProfile(P,legs,lvl,cloud){
   <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profilo verticale della rotta">
     ${grid}<path d="${terr}" fill="#6b4f2a" fill-opacity=".75" stroke="#a0784a"/>
     ${cl}
-    ${ceil?`<path d="M${samp.map((p,k)=>`${X(p[2]).toFixed(1)},${Y(ceil[k]).toFixed(1)}`).join(" L")}" fill="none" stroke="#d29922" stroke-width="2.5"/><text x="${pl+6}" y="${Y(ceil[0])-6}" fill="#d29922" font-size="12">limite ${S.lic}: ${ceilAGL} ft dal suolo</text>`:""}
-    <line x1="${pl}" x2="${W-pr}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="3"/>
+    ${ceil?`<path d="M${samp.map((p,k)=>`${X(p[2]).toFixed(1)},${Y(ceil[k]).toFixed(1)}`).join(" L")} L${samp.slice().reverse().map(p=>`${X(p[2]).toFixed(1)},${Y(el[samp.indexOf(p)]).toFixed(1)}`).join(" L")} Z" fill="#2ea043" fill-opacity=".18" stroke="none"/><path d="M${samp.map((p,k)=>`${X(p[2]).toFixed(1)},${Y(ceil[k]).toFixed(1)}`).join(" L")}" fill="none" stroke="#d29922" stroke-width="2.5"/><text x="${pl+6}" y="${Y(ceil[0])-6}" fill="#d29922" font-size="12">limite ${S.lic}: ${ceilAGL} ft dal suolo</text>`:""}
+    <line x1="${pl}" x2="${W-pr}" y1="${Y(cruise)}" y2="${Y(cruise)}" stroke="#d6336c" stroke-width="${ceil?2:3}" ${ceil?'stroke-dasharray="10 6"':""}/>
     <text x="${W-pr-4}" y="${Y(cruise)-6}" fill="#d6336c" font-size="12" text-anchor="end">crociera ~${cruise} ft</text>
     ${wps}
   </svg>
   <div class="sub" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
     <span><span style="display:inline-block;width:12px;height:12px;background:#6b4f2a;border:1px solid #a0784a;vertical-align:middle"></span> terreno</span>
     <span><span style="display:inline-block;width:18px;border-top:3px solid #d6336c;vertical-align:middle"></span> quota di crociera</span>
-    ${ceil?`<span><span style="display:inline-block;width:18px;border-top:3px solid #d29922;vertical-align:middle"></span> quota massima ${S.lic}</span>`:""}
+    ${ceil?`<span><span style="display:inline-block;width:18px;border-top:3px solid #d29922;vertical-align:middle"></span> quota massima ${S.lic}</span><span><span style="display:inline-block;width:12px;height:12px;background:rgba(46,160,67,.35);vertical-align:middle"></span> fascia in cui puoi volare</span>`:""}
     <span><span style="display:inline-block;width:18px;border-top:3px dashed #8b98a5;vertical-align:middle"></span> base nubi stimata</span>
   </div>
   <div class="grid" style="margin-top:8px">
-    <div class="card"><div class="k">Terreno più alto sulla rotta</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(worst[2],1)} NM dalla partenza</div></div>
+    ${ceil?`<div class="card"><div class="k">Terreno più alto sulla rotta</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(worst[2],1)} NM dalla partenza: lì puoi salire al massimo a <b>${r(ceil[el.indexOf(maxT)])} ft</b> sull'altimetro (QNH)</div></div>
+    <div class="card"><div class="k">Quota massima consentita lungo la rotta</div><div class="v">${r(Math.min(...ceil))}–${r(Math.max(...ceil))} ft</div><div class="s">Il limite non è fisso: è il terreno più alto entro ~5 km + ${ceilAGL} ft, quindi sale e scende con le colline (linea arancione). Vola nella fascia verde seguendo il terreno.</div></div>
+    <div class="card" style="${over>0?"border-color:var(--nogo)":""}"><div class="k">La quota scelta (~${cruise} ft) per tutta la rotta</div><div class="v" style="${over>0?"color:var(--nogo)":"color:var(--go)"}">${over>0?`oltre il limite di ${r(over)} ft`:"sempre nel limite"}</div><div class="s">${over>0?`Tenendo ~${cruise} ft fissi esci dalla fascia verde dove il terreno è basso. Con il VDS basico non si vola a quota fissa: segui il profilo.`:`Tenendo ~${cruise} ft fissi resti sempre sotto la linea arancione.`}</div></div>`
+    :`    <div class="card"><div class="k">Terreno più alto sulla rotta</div><div class="v">${r(maxT)} ft</div><div class="s">a ${r(worst[2],1)} NM dalla partenza</div></div>
     <div class="card" style="${clear<1000?"border-color:var(--nogo)":""}"><div class="k">Quanto passi sopra il terreno</div><div class="v" style="${clear<1000?"color:var(--nogo)":""}">${r(clear)} ft</div><div class="s">nel punto più alto della rotta, volando a ~${cruise} ft. Antenne e tralicci esclusi. In rosso sotto i 1.000 ft.</div></div>
-    ${ceil?`<div class="card" style="${over>0?"border-color:var(--nogo)":""}"><div class="k">Limite di quota ${S.lic}</div><div class="v" style="${over>0?"color:var(--nogo)":"color:var(--go)"}">${over>0?`superato di ${r(over)} ft`:"rispettato"}</div><div class="s">${over>0?`A ~${cruise} ft passi sopra la linea arancione, cioè oltre i ${ceilAGL} ft dal suolo consentiti. Scegli una quota più bassa e resta sotto la linea.`:`Resti sotto la linea arancione: ${ceilAGL} ft sopra il terreno più alto entro ~5 km.`}</div></div>`:""}
+`}
     <div class="card"><div class="k">Nubi basse sulla rotta</div><div class="v">${cloud.some(x=>x!=null)?"~"+r(Math.min(...cloud.filter(x=>x!=null)))+" ft":"nessuna"}</div><div class="s">${cloud.some(x=>x!=null)?"base stimata più bassa (linea grigia tratteggiata), quota sul mare: resta sotto con margine":"meno del 30% di nubi basse previste lungo la rotta: base non stimata"}</div></div>
   </div>
   <p class="sub">Terreno da modello di elevazione (Open-Meteo, griglia ~90 m): non comprende edifici, tralicci, antenne e cavi. ${ceil?"Il limite VDS è calcolato solo lungo la linea di rotta, non in tutto il raggio di 5 km: è un'indicazione, non una verifica.":""} Quote in ft sul livello del mare, quota di crociera approssimata dal livello di pressione.</p>`;
