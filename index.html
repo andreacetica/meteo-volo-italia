@@ -776,15 +776,17 @@ async function zoneCheck(legs,lvl,seq){
     if(seq!==calcSeq)return;
     const alt=ALTFT[lvl], hits=new Map(); let above=0;
     items.forEach(a=>{a._b=gBox(a.geometry)});
+    let cumD=0,cumH=0;
     legs.forEach((L,n)=>{
       const steps=Math.max(2,Math.ceil(L.g.dist/0.25));
       for(let s=0;s<=steps;s++){
         const f=s/steps, x=L.A.lon+(L.B.lon-L.A.lon)*f, y=L.A.lat+(L.B.lat-L.A.lat)*f;
         for(const a of items){
           if(hits.has(a._id)||x<a._b[0]||x>a._b[2]||y<a._b[1]||y>a._b[3])continue;
-          if(inGeom(x,y,a.geometry))hits.set(a._id,{a,leg:n+1});
+          if(inGeom(x,y,a.geometry))hits.set(a._id,{a,leg:n+1,nm:cumD+f*L.g.dist,min:(cumH+f*L.h)*60});
         }
       }
+      cumD+=L.g.dist; cumH+=L.h;
     });
     const lic=LIC[S.lic], basic=!!lic.airportKm, list=[];
     hits.forEach(h=>{
@@ -799,12 +801,12 @@ async function zoneCheck(legs,lvl,seq){
       else why="verifica limiti e condizioni su AIP";
       list.push({...h,lv,why});
     });
-    list.sort((p,q)=>(p.lv==="nogo"?0:1)-(q.lv==="nogo"?0:1)||p.leg-q.leg);
+    list.sort((p,q)=>p.nm-q.nm); // nell'ordine in cui le incontri lungo la rotta
     ZONES=list;
     if(NAV.aspl&&window.L)list.forEach(z=>window.L.geoJSON(z.a.geometry,{style:{color:z.lv==="nogo"?"#f85149":"#d29922",weight:2,fillOpacity:.12},interactive:false}).addTo(NAV.aspl));
     const col=lv=>lv==="nogo"?"var(--nogo)":"var(--warn)";
-    box.innerHTML=list.length?`<div class="card" style="border-color:${col(list[0].lv)}"><div class="k">${list[0].lv==="nogo"?"⛔":"⚠️"} Zone attraversate dalla rotta · ${S.lic}</div>
-      ${list.map(z=>`<div style="margin-top:6px;font-size:14px"><b>${z.a.name}</b> <span class="badge">${ASPT[z.a.type]}</span> <span class="sub">tratta ${z.leg} · ${limTxt(z.a.lowerLimit)} – ${limTxt(z.a.upperLimit)}</span><br><span style="color:${col(z.lv)}">${z.why}</span></div>`).join("")}
+    box.innerHTML=list.length?`<div class="card" style="border-color:${col(list.some(z=>z.lv==="nogo")?"nogo":"warn")}"><div class="k">${list.some(z=>z.lv==="nogo")?"⛔":"⚠️"} Zone attraversate dalla rotta, in ordine di percorso · ${S.lic}</div>
+      ${list.map(z=>`<div style="margin-top:8px;font-size:14px;border-left:3px solid ${col(z.lv)};padding-left:8px">${z.lv==="nogo"?"⛔":"⚠️"} <b>${z.a.name}</b> <span class="badge">${ASPT[z.a.type]}</span> <span class="sub">dopo ${r(z.nm,1)} NM (~${Math.round(z.min)} min) · tratta ${z.leg} · ${limTxt(z.a.lowerLimit)} – ${limTxt(z.a.upperLimit)}</span><br><span style="color:${col(z.lv)}">${z.why}</span></div>`).join("")}
       <div class="s" style="margin-top:8px">Dati openAIP${window.OAIP?" del "+window.OAIP.date:""} (comunità, non ufficiali)${above?` · ${above>1?`altre ${above} zone`:"un'altra zona"} sopra ${alt} ft non mostrat${above>1?"e":"a"}`:""}. Fa fede l'AIP.</div></div>`
       :`<div class="card"><div class="k">✅ Nessuna zona trovata sulla rotta</div><div class="s">Secondo openAIP (non ufficiale)${above?`, a parte ${above>1?`${above} zone`:"una zona"} sopra ${alt} ft`:""}. Conferma comunque su AIP e NOTAM.</div></div>`;
   }catch(e){ if(seq!==calcSeq)return; box.innerHTML=`<div class="card sub">⚠️ Avviso zone non disponibile: openAIP non risponde alle richieste dal browser (${e.message}). Si attiverà quando l'app sarà su GitHub con i dati openAIP inclusi. Intanto controlla le zone sulla mappa e su AIP.</div>`}
