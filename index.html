@@ -73,7 +73,11 @@
   .navsearch input{flex:1;min-width:200px}
   #navres .hl{color:var(--accent)}
   .srch a{display:block;padding:4px 0;cursor:pointer}
-  .ap h3{margin:0 0 4px;font-size:17px}
+  .ap h3{margin:0 0 4px;font-size:17px} .ap h3 a{color:inherit;text-decoration:none} .ap h3 a:hover{text-decoration:underline}
+  #apsheet{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 10px}
+  #apsheet .sheet{background:var(--bg);border:1px solid var(--line);border-radius:14px;max-width:760px;width:100%;padding:16px;position:relative}
+  #apsheet .x{position:absolute;top:10px;right:10px} #apsheet h3.sh{font-size:15px;margin:16px 0 6px}
+  #apsheet textarea{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
   .ap table{min-width:0;font-size:13px}
   .ap .best td{background:rgba(46,160,67,.15)}
   .badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--mute);margin-left:6px}
@@ -570,8 +574,55 @@ function apByCode(c){return AIRF.find(a=>a.c===c)}
 function apLabel(a){return `${a.c} ${a.n.replace(/ (Airfield|Airport|Ultralight Strip|Airstrip)$/,"")}`}
 function apPopup(a){
   const rws=a.r.length?a.r.map(r=>`${r[0]}/${r[1]} · ${r[2]?ftm(r[2])+" m":"?"} · ${SURF(r[4])}`).join("<br>"):"piste non in archivio";
-  return `<b>${a.c}</b> ${a.n}<br><span style="color:#666">${a.m||""} · ${a.e!=null?a.e+" ft":""}</span><br>${rws}<br><a href="#" data-add="${a.c}">➕ Aggiungi alla rotta</a>`;
+  return `<b>${a.c}</b> ${a.n}<br><span style="color:#666">${a.m||""} · ${a.e!=null?a.e+" ft":""}</span><br>${rws}<br><a href="#" data-sheet="${a.c}">📋 Scheda completa</a> · <a href="#" data-add="${a.c}">➕ Aggiungi alla rotta</a>`;
 }
+// ---- Scheda completa del campo (si apre toccando un aeroporto) ----
+let NOTE={}; try{NOTE=JSON.parse(localStorage.getItem("meteoVoloNote")||"{}")}catch(e){}
+function noteSave(){try{localStorage.setItem("meteoVoloNote",JSON.stringify(NOTE))}catch(e){}}
+const esc=t=>String(t??"").replace(/[<&>"]/g,c=>({"<":"&lt;","&":"&amp;",">":"&gt;",'"':"&quot;"}[c]));
+const telHref=t=>"tel:"+String(t).replace(/[^\d+]/g,"");
+async function apSheet(code){
+  const a=apByCode(code); if(!a)return;
+  let ov=$("apsheet"); if(!ov){ov=document.createElement("div");ov.id="apsheet";document.body.appendChild(ov);ov.onclick=e=>{if(e.target===ov)ov.remove()}}
+  const n=NOTE[a.c]||{}, inRoute=NS.route.some(p=>p.ap===a.c), q=encodeURIComponent(`${a.n} ${a.m||""}`);
+  const offic=[a.tel&&`📞 <a href="${telHref(a.tel)}">${esc(a.tel)}</a>`,a.mail&&`✉️ <a href="mailto:${esc(a.mail)}">${esc(a.mail)}</a>`].filter(Boolean).join(" · ");
+  const links=[
+    a.w&&`<a href="${esc(a.w)}" target="_blank" rel="noopener">🌐 Sito del campo</a>`,
+    `<a href="https://www.google.com/search?q=${q}+telefono" target="_blank" rel="noopener">🔎 Cerca telefono e contatti</a>`,
+    `<a href="https://www.google.com/maps/search/?api=1&query=${a.la},${a.lo}" target="_blank" rel="noopener">📍 Apri in Google Maps</a>`,
+    a.t!=="s"?`<a href="${EAIP}" target="_blank" rel="noopener">📘 eAIP · scheda AD 2 ${a.c}</a>`:`<a href="https://www.webaai.it" target="_blank" rel="noopener">📘 WebAAI (ENAC)</a>`,
+    `<a href="https://www.avioportolano.it" target="_blank" rel="noopener">📗 Avioportolano</a>`,
+    !/^IT-/.test(a.c)&&a.t!=="s"?`<a href="https://aviationweather.gov/data/metar/?id=${a.c}&hours=0&taf=1" target="_blank" rel="noopener">🌦️ METAR e TAF ${a.c}</a>`:""
+  ].filter(Boolean).join("");
+  ov.innerHTML=`<div class="sheet"><button class="x" aria-label="Chiudi">✕</button>
+    <div id="sh_card"><div class="card sub">Carico il meteo del campo…</div></div>
+    <h3 class="sh">Contatti</h3>
+    <div class="sub">${offic||"Nessun contatto verificato in archivio: usa “Cerca telefono e contatti” e salvalo qui sotto."}</div>
+    <div class="settings" style="margin-top:8px">
+      <label>Telefono<input id="sh_tel" type="tel" value="${esc(n.tel)}" placeholder="es. +39 0575 …"></label>
+      <label>Email<input id="sh_mail" type="email" value="${esc(n.mail)}"></label>
+      <label>Radio / frequenza usata<input id="sh_rad" value="${esc(n.rad)}"></label>
+    </div>
+    <label class="sub" style="display:block;margin-top:8px">I tuoi appunti (PPR, orari, circuito, carburante, referente…)<textarea id="sh_note" rows="3" style="width:100%;margin-top:4px">${esc(n.note)}</textarea></label>
+    <div class="sub" id="sh_quick" style="margin-top:6px">${n.tel?`📞 <a href="${telHref(n.tel)}">Chiama ${esc(n.tel)}</a>`:""}</div>
+    <p class="sub">Gli appunti restano solo in questo browser.</p>
+    <h3 class="sh">Collegamenti</h3><div class="links">${links}</div>
+    <p style="margin-top:14px">${inRoute?"":`<button id="sh_add">➕ Aggiungi alla rotta</button> `}<button id="sh_close">Chiudi</button></p></div>`;
+  ov.querySelector(".x").onclick=$("sh_close").onclick=()=>ov.remove();
+  if($("sh_add"))$("sh_add").onclick=()=>{ov.remove();addAirport(a)};
+  ["sh_tel","sh_mail","sh_rad","sh_note"].forEach(id=>$(id).oninput=()=>{
+    NOTE[a.c]={tel:$("sh_tel").value.trim(),mail:$("sh_mail").value.trim(),rad:$("sh_rad").value.trim(),note:$("sh_note").value};
+    if(!Object.values(NOTE[a.c]).some(Boolean))delete NOTE[a.c]; noteSave();
+    const t=$("sh_tel").value.trim(); $("sh_quick").innerHTML=t?`📞 <a href="${telHref(t)}">Chiama ${esc(t)}</a>`:"";
+  });
+  try{
+    const W=await wxAt(a.la,a.lo), k=DATA?DATA.hourly.time[selHour]:null; let i=k?W.hourly.time.indexOf(k):0; if(i<0)i=0;
+    if(!$("sh_card"))return;
+    $("sh_card").innerHTML=airportCard(a,W.hourly.wind_direction_10m[i],W.hourly.wind_speed_10m[i],W.hourly.wind_gusts_10m[i],`alle ${W.hourly.time[i].slice(11,16)}`);
+  }catch(e){if($("sh_card"))$("sh_card").innerHTML=airportCard(a,null,null,null,"")}
+  const hl=document.querySelector("#sh_card h3 a"); if(hl)hl.replaceWith(`${a.c} · ${a.n}`);
+}
+
 function addAirport(a){addPoint({lat:a.la,lon:a.lo,name:apLabel(a),ap:a.c})}
 
 function airportCard(a,wd,ws,gust,when){
@@ -589,7 +640,7 @@ function airportCard(a,wd,ws,gust,when){
     return `<tr><td style="text-align:left"><b>${r[0]}/${r[1]}</b></td><td>${x.h!=null?n3(x.h)+"°":"–"}</td><td>${r[2]?ftm(r[2])+" m":"–"}</td><td>${r[3]?ftm(r[3])+" m":"–"}</td><td>${SURF(r[4])}</td><td style="text-align:left">${cc}</td></tr>`}).join("")
     :`<tr><td colspan="6" class="sub">Piste non presenti in archivio.</td></tr>`;
   const fr=a.f.length?a.f.map(f=>`${f[1]||f[0]} <span class="mono">${f[2]}</span>`).join(" · "):"non in archivio";
-  return `<div class="card ap"><h3>${a.c} · ${a.n}<span class="badge">${TYP[a.t]}</span></h3>
+  return `<div class="card ap"><h3><a href="#" data-sheet="${a.c}" title="Apri la scheda completa">${a.c} · ${a.n} ›</a><span class="badge">${TYP[a.t]}</span></h3>
     <div class="sub">${a.m||""} · quota ${a.e!=null?a.e+" ft ("+ftm(a.e)+" m)":"–"} · ${a.la.toFixed(4)} N ${a.lo.toFixed(4)} E${a.w?` · <a href="${a.w}" target="_blank" rel="noopener">sito</a>`:""}</div>
     <div class="tablewrap" style="margin-top:8px"><table><tr><th>Pista</th><th>Prua</th><th>Lunghezza</th><th>Larghezza</th><th>Fondo</th><th style="text-align:left">Vento ${when||""}</th></tr>${body}</table></div>
     <div class="sub" style="margin-top:6px">📘 Dati ufficiali (orari, PPR, pendenza, circuiti): <a href="https://www.webaai.it" target="_blank" rel="noopener">WebAAI – portale ENAC delle aviosuperfici</a> · <a href="https://www.avioportolano.it" target="_blank" rel="noopener">Avioportolano</a></div>
@@ -836,7 +887,7 @@ function drawMap(){
       Lf.circleMarker([a.la,a.lo],{radius:a.t==="s"?4:6,color:a.t==="s"?"#2ea043":"#58a6ff",weight:2,fillOpacity:.6,bubblingMouseEvents:false})
         .bindPopup(apPopup(a)).bindTooltip(a.c,{direction:"top"}).addTo(apl)});
     apl.addTo(NAV.map); NAV.ctrl.addOverlay(apl,"Aeroporti e aviosuperfici");
-    NAV.map.on("popupopen",e=>{const el=e.popup.getElement().querySelector("[data-add]");if(el)el.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();addAirport(apByCode(el.dataset.add))}});
+    NAV.map.on("popupopen",e=>{const el=e.popup.getElement().querySelector("[data-add]");if(el)el.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();addAirport(apByCode(el.dataset.add))};const sh=e.popup.getElement().querySelector("[data-sheet]");if(sh)sh.onclick=ev=>{ev.preventDefault();NAV.map.closePopup();apSheet(sh.dataset.sheet)}});
     NAV.map.on("click",ev=>addPoint({lat:+ev.latlng.lat.toFixed(5),lon:+ev.latlng.lng.toFixed(5),name:`WP${NS.route.length+1}`}));
     NAV.first=true;
   }
@@ -895,6 +946,7 @@ function baseInit(){
     $("b_res").querySelectorAll("a[data-c]").forEach(x=>x.onclick=()=>{S.home=x.dataset.c;S.rwh="";save();NS.route=[];navSave(NS);location.reload()});
   };
 }
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("a[data-sheet]");if(t&&!t.closest(".leaflet-popup")&&!t.closest("#apsheet")){e.preventDefault();apSheet(t.dataset.sheet)}});
 fillHeader(); baseInit(); initSettings(); navInit(); loadWeather(); loadMetar();
 setInterval(loadWeather,30*60*1000);
 </script>
