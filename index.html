@@ -819,7 +819,7 @@ function drawMap(){
     const esri=u=>`https://server.arcgisonline.com/ArcGIS/rest/services/${u}/MapServer/tile/{z}/{y}/{x}`;
     const base=Lf.tileLayer(esri("World_Topo_Map"),{maxZoom:18,attribution:"Tiles © Esri"});
     const sat=Lf.tileLayer(esri("World_Imagery"),{maxZoom:18,attribution:"Tiles © Esri"});
-    const topo=Lf.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:15,attribution:"© OpenStreetMap · © OpenTopoMap"});
+    const topo=Lf.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:18,maxNativeZoom:15,attribution:"© OpenStreetMap contributors, SRTM · stile © OpenTopoMap (CC-BY-SA)"});
     base.addTo(NAV.map);
     NAV.ctrl=Lf.control.layers({"Mappa":base,"Satellite":sat,"Rilievi (OpenTopoMap)":topo},{},{collapsed:true}).addTo(NAV.map);
     NAV.setAip=()=>{
@@ -883,7 +883,7 @@ function navInit(){
   $("n_go").onclick=navSearch; $("n_q").onkeydown=e=>{if(e.key==="Enter")navSearch()};
   $("n_undo").onclick=()=>{NS.route.pop();navSave(NS);navCalc()};
   $("n_clear").onclick=()=>{NS.route=[];navSave(NS);NAV.first=true;navCalc()};
-  $("n_home").onclick=()=>addPoint({...HOME});
+  $("n_home").onclick=()=>{const P=pts(),q=P[P.length-1];if(NS.route.length&&!(q.lat===HOME.lat&&q.lon===HOME.lon))addPoint({...HOME})};
   $("n_gpx").onclick=()=>{if(NS.route.length)gpx()};
 }
 
