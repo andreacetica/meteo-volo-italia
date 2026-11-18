@@ -837,11 +837,10 @@ function zoneInfo(z,alt){
   const where=PRD.includes(a.type)||[8,9].includes(a.type)?"AIP ENR 5.1 (zone P, R e D) e NOTAM del giorno":[4,13,36,14].includes(a.type)?"AIP: scheda AD 2 dell'aeroporto (sezione spazi ATS) e NOTAM":[7,26].includes(a.type)?"AIP ENR 2.1 e NOTAM":"AIP ENR 5 e NOTAM";
   return `<div style="margin-top:6px;font-size:14px;line-height:1.45">
     <div>${ASPDESC[a.type]||"Zona aeronautica: verifica le condizioni sull'AIP."}</div>
-    <div style="margin-top:6px"><b>Da</b> ${limWords(a.lowerLimit)} <b>a</b> ${limWords(a.upperLimit)}.</div>
+    <div style="margin-top:6px"><b>Limiti:</b> ${limWords(a.lowerLimit)} → ${limWords(a.upperLimit)}.</div>
     <div style="margin-top:4px">${rel}</div>
     ${flags.length?`<div style="margin-top:4px">📌 Secondo openAIP: ${flags.join(", ")}.</div>`:""}
     <div style="margin-top:6px">📘 Dove verificare: <b>${where}</b>. <a href="${EAIP}" target="_blank" rel="noopener">eAIP</a></div>
-    <div class="sub" style="margin-top:4px">I NOTAM non sono ancora nell'app: non esiste una fonte gratuita e aperta che li fornisca alle pagine web. Controllali su ENAV prima del volo.</div>
   </div>`;
 }
 
