@@ -36,6 +36,8 @@ Gratuito, open source, senza registrazione. Funziona nel browser, anche da telef
 - Per il VDS basico, **avviso se la rotta passa a meno di 5 km da un aeroporto**.
 - **Windy** integrato (widget ufficiale) centrato sulla rotta: vento, raffiche, nuvole, pioggia, temperatura, pressione.
 - Mappa topografica o satellite, livello **spazi aerei openAIP** (serve una chiave gratuita) ed esportazione della rotta in **GPX**.
+- **Avviso zone sulla rotta**: con la chiave openAIP l'app segnala ATZ, CTR, TMA e zone P/R/D attraversate, in base al titolo (VDS basico o avanzato). Dati non ufficiali.
+- **Checklist "Verifica su AIP e NOTAM"**: per ogni rotta dice quali sezioni dell'eAIP ENAV controllare (ENR 5.1, ENR 5.6, ENR 2, AD 2) e quali campi chiamare.
 
 ## Come si usa
 

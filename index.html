@@ -108,16 +108,19 @@
   <h2 id="nexttitle">Adesso e prossime 3 ore</h2>
   <div class="next" id="next"></div>
 
-  <div id="cards"></div>
 
   <h2>Pista e componenti del vento <span class="sub" id="rwhour"></span></h2>
   <div class="rw" id="runway"></div>
 
-  <h2>Ora per ora <span class="sub">(tocca una riga per vedere i dettagli)</span></h2>
+
+  <details id="wxmore"><summary>📊 Dettagli meteo del campo e previsione ora per ora</summary>
+  <div id="cards"></div>
+  <h3 style="font-size:15px;margin:16px 0 6px">Ora per ora <span class="sub">(tocca una riga per vederla in alto)</span></h3>
   <div class="tablewrap"><table id="hourly"></table></div>
+  </details>
 
   <h2>🧭 Navigazione · pianificazione a terra</h2>
-  <p class="sub">Costruisci la rotta come su SkyDemon: <b>tocca la mappa</b> per aggiungere un punto, <b>trascina</b> un punto per spostarlo, <b>tocca un punto</b> per eliminarlo. I pallini verdi sono i 660 aeroporti e aviosuperfici italiani in archivio: toccane uno per la scheda e per aggiungerlo alla rotta, oppure cercalo per nome o codice. Ogni tratta usa il vento previsto alla quota e all'ora scelte.</p>
+  <p class="sub"><b>Tocca la mappa</b> per aggiungere un punto, <b>trascinalo</b> per spostarlo, <b>toccalo</b> per toglierlo. Oppure cerca un campo o un paese.</p>
   <div class="navform">
     <label>Partenza alle<select id="n_hour"></select></label>
     <label>Quota di crociera
@@ -131,10 +134,7 @@
     </label>
     <label>Velocità di crociera TAS (kt)<input id="n_tas" type="number" min="30"></label>
     <label>Consumo (litri/ora)<input id="n_fuel" type="number" min="0" step="0.5"></label>
-    <label>Declinazione magnetica (°E, dalla carta)<input id="n_var" type="number" step="0.1" placeholder="es. dalla carta VFR"></label>
-    <label>Chiave openAIP (spazi aerei, ATZ, CTR…)<input id="n_oaip" type="text" placeholder="incolla qui la tua chiave"></label>
   </div>
-  <p class="sub">Velocità e consumo si salvano per il velivolo selezionato (valori di partenza <b>solo di esempio</b>). Per spazi aerei, ATZ e CTR sulla mappa serve una chiave gratuita di <a href="https://www.openaip.net" target="_blank" rel="noopener">openAIP</a> (dati della comunità, non ufficiali).</p>
   <div class="navsearch"><input id="n_q" placeholder="Cerca aeroporto, aviosuperficie o paese (es. LIQB, Trasimeno, Castiglione del Lago)"><button id="n_go">Cerca</button></div>
   <div id="n_srch" class="srch sub"></div>
   <div class="navsearch">
@@ -144,24 +144,30 @@
     <button id="n_gpx">⬇︎ Scarica rotta GPX</button>
   </div>
   <div id="map"></div>
+  <div id="aspc" style="margin-top:12px"></div>
   <div id="navres" style="margin-top:12px"></div>
   <div id="profile" style="margin-top:12px"></div>
+  <div id="aipchk" style="margin-top:12px"></div>
   <div id="destinfo" style="margin-top:12px"></div>
 
-  <h2>🌬️ Windy sulla zona</h2>
+
+
+  <details id="wybox"><summary>🌬️ Windy sulla zona</summary>
   <div class="navsearch" id="wy_btns"></div>
   <div style="margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--line)"><iframe id="windy" title="Windy" style="width:100%;height:420px;border:0" loading="lazy"></iframe></div>
   <p class="sub">Mappa interattiva di <a href="https://www.windy.com" target="_blank" rel="noopener">Windy.com</a> (widget ufficiale), centrata sulla rotta o sul campo base.</p>
-
-  <h2>Il campo base</h2>
+  </details>
+  <details id="basemore"><summary>🛬 Scheda del campo base, METAR e TAF</summary>
   <div id="homecard"></div>
 
-  <h2>METAR e TAF degli aeroporti vicini</h2>
+  <h3 style="font-size:15px;margin:16px 0 6px">METAR e TAF degli aeroporti vicini</h3>
   <div id="metar" class="metar mono">Caricamento…</div>
+  </details>
 
   <h2>Fonti ufficiali da controllare prima di partire</h2>
   <div class="links">
     <a href="https://www.meteoam.it/it/meteo-aeronautica" target="_blank" rel="noopener">Aeronautica Militare – meteo aeronautica</a>
+    <a href="https://onlineservices.enav.it/enavWebPortalStatic/AIP/AIP/defaultInt.html" target="_blank" rel="noopener">eAIP Italia (ENAV, con accesso)</a>
     <a href="https://www.enav.it/sites/public/it/Servizi/Servizi-di-informazioni-aeronautiche.html" target="_blank" rel="noopener">ENAV – informazioni aeronautiche e NOTAM</a>
     <a id="l_awc" href="https://aviationweather.gov/data/metar/" target="_blank" rel="noopener">METAR/TAF (aviationweather.gov)</a>
     <a id="l_windy" href="https://www.windy.com" target="_blank" rel="noopener">Windy sul campo</a>
@@ -169,7 +175,7 @@
   </div>
 
   <details id="setbox">
-    <summary>⚙️ Impostazioni: pista e limiti per velivolo</summary>
+    <summary>⚙️ Impostazioni: limiti, esperienza, mappa</summary>
     <p class="sub">I limiti qui sotto valgono per il velivolo selezionato in alto (<b id="s_acname"></b>): ognuno ha i suoi. Si salvano in questo browser. I valori di partenza sono <b>solo di esempio</b>: per il traverso usa il valore del manuale di volo del velivolo, e per il resto quanto concordato con il tuo istruttore.</p>
     <div class="settings">
       <label>Pista (orientamento)
@@ -192,6 +198,12 @@
       <label>Dopo quanti giorni fermo diventare prudente<input id="s_days" type="number" min="1" placeholder="es. 30"></label>
       <label>Riduzione dei limiti di vento, raffiche e traverso (%)<input id="s_red" type="number" min="0" max="90" placeholder="es. 25"></label>
       <label><span><input id="s_bip" type="checkbox"> Abilitazione al biposto (passeggero)</span></label>
+    </div>
+    <h3 style="font-size:15px;margin:14px 0 6px">🗺️ Navigazione e mappa</h3>
+    <p class="sub">La chiave gratuita di <a href="https://www.openaip.net" target="_blank" rel="noopener">openAIP</a> mostra spazi aerei e zone sulla mappa e attiva l'avviso automatico sulla rotta (dati della comunità, non ufficiali). Velocità e consumo si salvano per ogni velivolo.</p>
+    <div class="settings">
+    <label>Chiave openAIP (spazi aerei, ATZ, CTR…)<input id="n_oaip" type="text" placeholder="incolla qui la tua chiave"></label>
+    <label>Declinazione magnetica (°E, dalla carta)<input id="n_var" type="number" step="0.1" placeholder="es. dalla carta VFR"></label>
     </div>
     <p><button id="s_save">Salva</button> <button id="s_reset">Ripristina valori di esempio</button></p>
   </details>
@@ -636,13 +648,100 @@ function navHours(){
 function addPoint(p){NS.route.push(p);navSave(NS);navCalc()}
 
 let calcSeq=0;
+// ---- Zone sulla rotta (openAIP, non ufficiale) e checklist AIP ----
+const EAIP="https://onlineservices.enav.it/enavWebPortalStatic/AIP/AIP/defaultInt.html";
+const ASPT={1:"Regolamentata (R)",2:"Pericolosa (D)",3:"Vietata (P)",4:"CTR",5:"TMZ",6:"RMZ",7:"TMA",8:"TRA",9:"TSA",13:"ATZ",14:"MATZ",19:"Area protetta",21:"Settore volo a vela",26:"CTA",28:"Attività sportive",29:"Limite sorvolo bassa quota",36:"MCTR"};
+const ATS=[4,7,13,14,26,36], PRD=[1,2,3];
+const ASPC={}; let ZONES=null; const CHK={};
+function limFt(l){if(!l)return null;const v=+l.value||0;return l.unit===6?v*100:l.unit===0?v*3.281:v}
+function limTxt(l){if(!l)return"?";if(l.referenceDatum===0&&!+l.value)return"SFC";if(l.unit===6)return"FL"+l.value;return`${Math.round(limFt(l))} ft ${l.referenceDatum===0?"AGL":"AMSL"}`}
+function inRing(x,y,R){let c=false;for(let i=0,j=R.length-1;i<R.length;j=i++){const[xi,yi]=R[i],[xj,yj]=R[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c}
+function inGeom(x,y,g){const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];return polys.some(P=>inRing(x,y,P[0])&&!P.slice(1).some(h=>inRing(x,y,h)))}
+function gBox(g){let a=[180,90,-180,-90];JSON.stringify(g.coordinates).replace(/\[(-?[\d.]+),(-?[\d.]+)\]/g,(m,x,y)=>{x=+x;y=+y;a=[Math.min(a[0],x),Math.min(a[1],y),Math.max(a[2],x),Math.max(a[3],y)]});return a}
+async function aspFetch(b,key){
+  const id=b.map(x=>x.toFixed(2)).join(","); if(ASPC[id])return ASPC[id];
+  let all=[];
+  for(let page=1;page<=6;page++){
+    const r=await fetch(`https://api.core.openaip.net/api/airspaces?bbox=${id}&limit=500&page=${page}&apiKey=${encodeURIComponent(key)}`);
+    if(!r.ok)throw new Error(r.status===401||r.status===403?"chiave non valida":"errore "+r.status);
+    const j=await r.json(); all=all.concat(j.items||[]); if(!j.totalPages||page>=j.totalPages)break;
+  }
+  return ASPC[id]=all;
+}
+async function zoneCheck(legs,lvl,seq){
+  const box=$("aspc"), key=(NS.oaip||"").trim(); ZONES=null;
+  if(NAV.aspl)NAV.aspl.clearLayers();
+  if(!key){box.innerHTML=`<div class="card sub">🗺️ Avviso automatico sulle zone non attivo: inserisci la chiave openAIP in ⚙️ Impostazioni. Intanto controlla le zone su AIP (lista qui sotto).</div>`;aipList(legs);return}
+  box.innerHTML=`<div class="card sub">Controllo le zone sulla rotta…</div>`;
+  try{
+    const P=[legs[0].A,...legs.map(L=>L.B)], pad=.05;
+    const b=[Math.min(...P.map(p=>p.lon))-pad,Math.min(...P.map(p=>p.lat))-pad,Math.max(...P.map(p=>p.lon))+pad,Math.max(...P.map(p=>p.lat))+pad];
+    const items=(await aspFetch(b,key)).filter(a=>ASPT[a.type]&&a.geometry);
+    if(seq!==calcSeq)return;
+    const alt=ALTFT[lvl], hits=new Map(); let above=0;
+    items.forEach(a=>{a._b=gBox(a.geometry)});
+    legs.forEach((L,n)=>{
+      const steps=Math.max(2,Math.ceil(L.g.dist/0.25));
+      for(let s=0;s<=steps;s++){
+        const f=s/steps, x=L.A.lon+(L.B.lon-L.A.lon)*f, y=L.A.lat+(L.B.lat-L.A.lat)*f;
+        for(const a of items){
+          if(hits.has(a._id)||x<a._b[0]||x>a._b[2]||y<a._b[1]||y>a._b[3])continue;
+          if(inGeom(x,y,a.geometry))hits.set(a._id,{a,leg:n+1});
+        }
+      }
+    });
+    const lic=LIC[S.lic], basic=!!lic.airportKm, list=[];
+    hits.forEach(h=>{
+      const lo=h.a.lowerLimit, lowFt=limFt(lo), gnd=lo&&lo.referenceDatum===0;
+      if(!gnd&&lowFt!=null&&lowFt>alt){above++;return}
+      const t=h.a.type; let lv="warn", why="";
+      if(t===3){lv="nogo";why="zona vietata: non entrarci"}
+      else if(ATS.includes(t)){lv=basic?"nogo":"warn";why=basic?"spazio ATS: con il VDS basico resta fuori":"spazio ATS: verifica contatto radio e autorizzazioni"}
+      else if(t===5||t===6){why=t===6?"RMZ: obbligo di contatto radio, verifica su AIP":"TMZ: obbligo di transponder, verifica su AIP"}
+      else if(t===1){why="regolamentata: verifica condizioni e attivazione su AIP e NOTAM"}
+      else if(t===2){why="pericolosa: verifica attività su AIP e NOTAM"}
+      else why="verifica limiti e condizioni su AIP";
+      list.push({...h,lv,why});
+    });
+    list.sort((p,q)=>(p.lv==="nogo"?0:1)-(q.lv==="nogo"?0:1)||p.leg-q.leg);
+    ZONES=list;
+    if(NAV.aspl&&window.L)list.forEach(z=>window.L.geoJSON(z.a.geometry,{style:{color:z.lv==="nogo"?"#f85149":"#d29922",weight:2,fillOpacity:.12},interactive:false}).addTo(NAV.aspl));
+    const col=lv=>lv==="nogo"?"var(--nogo)":"var(--warn)";
+    box.innerHTML=list.length?`<div class="card" style="border-color:${col(list[0].lv)}"><div class="k">${list[0].lv==="nogo"?"⛔":"⚠️"} Zone attraversate dalla rotta · ${S.lic}</div>
+      ${list.map(z=>`<div style="margin-top:6px;font-size:14px"><b>${z.a.name}</b> <span class="badge">${ASPT[z.a.type]}</span> <span class="sub">tratta ${z.leg} · ${limTxt(z.a.lowerLimit)} – ${limTxt(z.a.upperLimit)}</span><br><span style="color:${col(z.lv)}">${z.why}</span></div>`).join("")}
+      <div class="s" style="margin-top:8px">Dati openAIP (comunità, non ufficiali)${above?` · ${above>1?`altre ${above} zone`:"un'altra zona"} sopra ${alt} ft non mostrat${above>1?"e":"a"}`:""}. Fa fede l'AIP.</div></div>`
+      :`<div class="card"><div class="k">✅ Nessuna zona trovata sulla rotta</div><div class="s">Secondo openAIP (non ufficiale)${above?`, a parte ${above>1?`${above} zone`:"una zona"} sopra ${alt} ft`:""}. Conferma comunque su AIP e NOTAM.</div></div>`;
+  }catch(e){ if(seq!==calcSeq)return; box.innerHTML=`<div class="card sub">⚠️ Non riesco a leggere le zone da openAIP (${e.message}). Controllale sulla mappa e su AIP.</div>`}
+  aipList(legs);
+}
+function aipList(legs){
+  const Z=ZONES||[], nm=f=>[...new Set(Z.filter(f).map(z=>z.a.name))].join(", ");
+  const P=[legs[0].A,...legs.map(L=>L.B)];
+  const ends=[...new Set(P.filter(p=>p.ap||p.c).map(p=>apByCode(p.ap||p.c)).filter(Boolean))];
+  const ad=ends.filter(a=>a.t!=="s").map(a=>a.c), avs=ends.filter(a=>a.t==="s").map(a=>a.n);
+  const prd=nm(z=>PRD.includes(z.a.type)), ats=nm(z=>ATS.includes(z.a.type));
+  const items=[
+    ["notam","NOTAM di oggi per la rotta e i campi di partenza e arrivo",""],
+    ["enr51","AIP ENR 5.1 · zone vietate, regolamentate e pericolose",prd?`da openAIP: ${prd}`:""],
+    ["enr56","AIP ENR 5.6 · parchi e aree protette, quote di sorvolo",""],
+    ["ats","CTR, ATZ e TMA: ENR 2 e la scheda AD 2 dell'aeroporto",ats?`da openAIP: ${ats}`:""],
+    ["ad2","AIP AD 2 · schede degli aeroporti",ad.length?ad.join(", "):"nessun aeroporto tra partenza e arrivo"],
+  ];
+  if(avs.length)items.push(["avs","Aviosuperfici (non sono nell'AIP): senti il gestore",avs.join(", ")]);
+  const done=items.filter(i=>CHK[i[0]]).length;
+  $("aipchk").innerHTML=`<details ${done<items.length?"open":""}><summary>✅ Prima di partire: verifica su AIP e NOTAM (${done}/${items.length})</summary>
+    ${items.map(([k,t,d])=>`<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:14px"><input type="checkbox" data-chk="${k}" ${CHK[k]?"checked":""}><span>${t}${d?`<br><span class="sub">${d}</span>`:""}</span></label>`).join("")}
+    <p class="sub" style="margin-top:10px">Apri l'<a href="${EAIP}" target="_blank" rel="noopener">eAIP Italia di ENAV</a> (serve l'accesso). L'AIP cambia ogni 28 giorni: guarda sempre l'edizione in vigore.</p></details>`;
+  $("aipchk").querySelectorAll("[data-chk]").forEach(c=>c.onchange=()=>{CHK[c.dataset.chk]=c.checked;aipList(legs)});
+}
+
 async function navCalc(){
   const out=$("navres"), a=NS.ac[S.ac];
   a.tas=+$("n_tas").value||a.tas; a.fuel=+$("n_fuel").value||0; NS.var=$("n_var").value;
   const nk=$("n_oaip").value.trim(), kchg=nk!==(NS.oaip||""); NS.oaip=nk; navSave(NS); if(kchg&&NAV.setAip)NAV.setAip();
   drawMap();
   const P=pts();
-  if(P.length<2){$("destinfo").innerHTML="";$("profile").innerHTML="";windyUpdate();out.innerHTML=`<div class="card sub">Nessuna rotta: tocca la mappa per aggiungere il primo punto, oppure scegli un aeroporto dall'elenco.</div>`;return}
+  if(P.length<2){$("destinfo").innerHTML="";$("profile").innerHTML="";$("aspc").innerHTML="";$("aipchk").innerHTML="";if(NAV.aspl)NAV.aspl.clearLayers();windyUpdate();out.innerHTML=`<div class="card sub">Nessuna rotta: tocca la mappa per aggiungere il primo punto, oppure scegli un aeroporto dall'elenco.</div>`;return}
   if(!DATA)return;
   const seq=++calcSeq, k=+$("n_hour").value, lvl=$("n_alt").value, tas=a.tas, v=parseFloat(NS.var);
   out.innerHTML=`<div class="card sub">Calcolo la rotta…</div>`;
@@ -703,6 +802,7 @@ async function navCalc(){
       let q=W.hourly.time.indexOf(kk); if(q<0)q=0;
       cards+=airportCard(ap,W.hourly.wind_direction_10m[q],W.hourly.wind_speed_10m[q],W.hourly.wind_gusts_10m[q],`all'arrivo (~${clk(t2)}): ${n3(W.hourly.wind_direction_10m[q])}°/${r(W.hourly.wind_speed_10m[q])} kt`);
     }
+    zoneCheck(legs,lvl,seq);
     // profilo: base nubi = stima AGL + quota terreno a metà tratta
     (async()=>{try{const me=(await elevations(legs.map(L=>[L.mid.lat,L.mid.lon]))).map(m=>m*3.281); if(seq!==calcSeq)return;
       await drawProfile(P,legs,lvl,legs.map((L,n)=>L.cb==null?null:L.cb+me[n]));}catch(e){$("profile").innerHTML=`<div class="card sub">Profilo non disponibile (${e.message}).</div>`}})();
@@ -729,6 +829,7 @@ function drawMap(){
       NAV.aip.addTo(NAV.map); NAV.ctrl.addOverlay(NAV.aip,"Spazi aerei e aeroporti (openAIP)");
     };
     NAV.setAip();
+    NAV.aspl=Lf.layerGroup().addTo(NAV.map);
     Lf.circleMarker([LAT,LON],{radius:8,color:"#58a6ff",weight:3}).addTo(NAV.map).bindTooltip(apLabel(HOMEAP),{permanent:true,direction:"right"});
     const apl=Lf.layerGroup();
     AIRF.forEach(a=>{if(a.c===HOMEAP.c)return;
